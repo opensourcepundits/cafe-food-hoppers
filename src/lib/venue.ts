@@ -1,0 +1,305 @@
+export const DISTRICTS = ['Grand Baie', 'Ebène', 'Tamarin', 'Port Louis', 'Moka'] as const;
+export type District = (typeof DISTRICTS)[number];
+
+export const MAURITIUS_TZ = 'Indian/Mauritius';
+
+export const WEEKDAYS = [
+	'sunday',
+	'monday',
+	'tuesday',
+	'wednesday',
+	'thursday',
+	'friday',
+	'saturday'
+] as const;
+
+export type Weekday = (typeof WEEKDAYS)[number];
+
+export type WifiQuality = 'fast' | 'ok' | 'slow';
+export type OutletAccess = 'plenty' | 'some' | 'none';
+export type NoiseLevel = 'quiet' | 'moderate' | 'loud';
+
+export type WorkInfo = {
+	wifi?: boolean;
+	wifi_quality?: WifiQuality;
+	outlets?: boolean;
+	outlet_access?: OutletAccess;
+	laptop_friendly?: boolean;
+	noise_level?: NoiseLevel;
+	notes?: string;
+};
+
+export type DayHours = {
+	open: string;
+	close: string;
+	closed?: boolean;
+};
+
+export type OpeningHours = {
+	timezone?: string;
+} & Partial<Record<Weekday, DayHours>>;
+
+export type AnnouncementType = 'event' | 'closure' | 'notice' | 'alert';
+
+export type Announcement = {
+	id: string;
+	type: AnnouncementType;
+	title: string;
+	body: string;
+	starts_at: string;
+	ends_at: string | null;
+};
+
+export type Special = {
+	id: string;
+	title: string;
+	body: string;
+	starts_at: string;
+	ends_at: string | null;
+};
+
+export type SpecialTiming = 'upcoming' | 'ongoing' | 'ended';
+
+export type SpecialFeedItem = {
+	venueId: string;
+	venueName: string;
+	venueSlug: string;
+	district: string;
+	special: Special;
+	status: Exclude<SpecialTiming, 'ended'>;
+};
+
+export type MenuItem = {
+	name: string;
+	description?: string;
+	price_mur: number;
+	tags?: string[];
+};
+
+export type MenuCategory = {
+	category: string;
+	items: MenuItem[];
+};
+
+export type Contact = {
+	phone?: string;
+	instagram?: string;
+	website?: string;
+	email?: string;
+	google_maps?: string;
+};
+
+export type Venue = {
+	id: string;
+	name: string;
+	slug: string;
+	district: string;
+	lat: number | null;
+	lng: number | null;
+	isFeatured: boolean;
+	featuredPriority: number;
+	workInfo: WorkInfo;
+	openingHours: OpeningHours;
+	announcements: Announcement[];
+	specials: Special[];
+	menu: MenuCategory[];
+	contact: Contact;
+	createdAt: Date | null;
+	updatedAt: Date | null;
+};
+
+export type LiveVenue = Venue & {
+	open: boolean;
+	openLate: boolean;
+	workFriendly: boolean;
+	alerts: Announcement[];
+	ongoingSpecials: Special[];
+	upcomingSpecials: Special[];
+};
+
+export type VenueFilters = {
+	q: string;
+	district: string;
+	wifi: boolean;
+	outlets: boolean;
+	workFriendly: boolean;
+	notWorkFriendly: boolean;
+	openNow: boolean;
+	late: boolean;
+	ongoingSpecials: boolean;
+	upcomingSpecials: boolean;
+};
+
+const WEEKDAY_LABEL: Record<Weekday, string> = {
+	monday: 'Mon',
+	tuesday: 'Tue',
+	wednesday: 'Wed',
+	thursday: 'Thu',
+	friday: 'Fri',
+	saturday: 'Sat',
+	sunday: 'Sun'
+};
+
+export function mur(amount: number): string {
+	return `Rs ${Math.round(amount).toLocaleString('en-MU')}`;
+}
+
+export function mapsUrl(lat: number, lng: number): string {
+	return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+}
+
+type Clock = {
+	weekday: Weekday;
+	minutes: number;
+};
+
+export function mauritiusClock(at = new Date()): Clock {
+	const parts = Object.fromEntries(
+		new Intl.DateTimeFormat('en-US', {
+			timeZone: MAURITIUS_TZ,
+			weekday: 'long',
+			hour: '2-digit',
+			minute: '2-digit',
+			hourCycle: 'h23'
+		})
+			.formatToParts(at)
+			.map((part) => [part.type, part.value])
+	);
+
+	return {
+		weekday: parts.weekday.toLowerCase() as Weekday,
+		minutes: Number(parts.hour) * 60 + Number(parts.minute)
+	};
+}
+
+function parseMinutes(value: string): number {
+	const [hours, minutes] = value.split(':').map(Number);
+	return hours * 60 + minutes;
+}
+
+function previousWeekday(day: Weekday): Weekday {
+	const index = WEEKDAYS.indexOf(day);
+	return WEEKDAYS[(index + 6) % 7];
+}
+
+function isWithinHours(day: DayHours | undefined, minutes: number, overnightOnly = false): boolean {
+	if (!day || day.closed) return false;
+	const open = parseMinutes(day.open);
+	const close = parseMinutes(day.close);
+	if (close > open) {
+		if (overnightOnly) return false;
+		return minutes >= open && minutes < close;
+	}
+	if (close === open) return false;
+	return overnightOnly ? minutes < close : minutes >= open || minutes < close;
+}
+
+export function isOpenNow(hours: OpeningHours, at = new Date()): boolean {
+	const clock = mauritiusClock(at);
+	if (isWithinHours(hours[clock.weekday], clock.minutes)) return true;
+	return isWithinHours(hours[previousWeekday(clock.weekday)], clock.minutes, true);
+}
+
+export function hoursLabel(hours: OpeningHours, at = new Date()): string {
+	const clock = mauritiusClock(at);
+	const today = hours[clock.weekday];
+	if (!today || today.closed) return 'Closed today';
+	return `${today.open}–${today.close}`;
+}
+
+export function weekdayLabel(day: Weekday): string {
+	return WEEKDAY_LABEL[day];
+}
+
+export function orderedWeekdays(): Weekday[] {
+	return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+}
+
+export function isAnnouncementActive(announcement: Announcement, at = new Date()): boolean {
+	const start = Date.parse(announcement.starts_at);
+	if (Number.isNaN(start) || at.getTime() < start) return false;
+	if (!announcement.ends_at) return true;
+	const end = Date.parse(announcement.ends_at);
+	if (Number.isNaN(end)) return true;
+	return at.getTime() <= end;
+}
+
+export function activeAnnouncements(announcements: Announcement[], at = new Date()): Announcement[] {
+	return announcements.filter((item) => isAnnouncementActive(item, at));
+}
+
+export function noiseLabel(level: NoiseLevel | undefined): string | null {
+	if (!level) return null;
+	if (level === 'quiet') return 'Quiet';
+	if (level === 'moderate') return 'Moderate';
+	return 'Loud';
+}
+
+export function outletLabel(access: OutletAccess | undefined, outlets: boolean | undefined): string | null {
+	if (outlets === false || access === 'none') return 'No outlets';
+	if (access === 'plenty') return 'Many outlets';
+	if (access === 'some' || outlets) return 'Some outlets';
+	return null;
+}
+
+export function wifiLabel(info: WorkInfo): string | null {
+	if (!info.wifi) return null;
+	if (info.wifi_quality === 'fast') return 'Fast WiFi';
+	if (info.wifi_quality === 'slow') return 'Slow WiFi';
+	return 'WiFi';
+}
+
+const LATE_CLOSE_MINUTES = 21 * 60;
+
+export function isWorkFriendly(info: WorkInfo): boolean {
+	return Boolean(info.wifi && info.laptop_friendly && info.outlets);
+}
+
+export function isDayLate(day: DayHours | undefined): boolean {
+	if (!day || day.closed) return false;
+	const open = parseMinutes(day.open);
+	const close = parseMinutes(day.close);
+	if (close <= open) return true;
+	return close >= LATE_CLOSE_MINUTES;
+}
+
+export function isOpenTillLate(hours: OpeningHours): boolean {
+	return orderedWeekdays().some((day) => isDayLate(hours[day]));
+}
+
+export function specialTiming(special: Special, at = new Date()): SpecialTiming {
+	const start = Date.parse(special.starts_at);
+	if (Number.isNaN(start)) return 'ended';
+	if (at.getTime() < start) return 'upcoming';
+	if (!special.ends_at) return 'ongoing';
+	const end = Date.parse(special.ends_at);
+	if (Number.isNaN(end) || at.getTime() <= end) return 'ongoing';
+	return 'ended';
+}
+
+export function ongoingSpecials(specials: Special[], at = new Date()): Special[] {
+	return specials.filter((item) => specialTiming(item, at) === 'ongoing');
+}
+
+export function upcomingSpecials(specials: Special[], at = new Date()): Special[] {
+	return specials.filter((item) => specialTiming(item, at) === 'upcoming');
+}
+
+function formatMuDate(iso: string): string {
+	return new Intl.DateTimeFormat('en-GB', {
+		timeZone: MAURITIUS_TZ,
+		day: 'numeric',
+		month: 'short'
+	}).format(new Date(iso));
+}
+
+export function formatSpecialWhen(special: Special, at = new Date()): string {
+	const timing = specialTiming(special, at);
+	const start = formatMuDate(special.starts_at);
+	const end = special.ends_at ? formatMuDate(special.ends_at) : null;
+	if (timing === 'upcoming') {
+		return end && end !== start ? `${start} – ${end}` : `From ${start}`;
+	}
+	if (end) return `Until ${end}`;
+	return 'On now';
+}

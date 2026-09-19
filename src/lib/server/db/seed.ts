@@ -1,6 +1,7 @@
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { venues, type NewVenue } from './schema';
+import { resolveDatabaseUrl } from './env';
 import type { OpeningHours, Weekday } from '../../venue';
 
 const WEEK: Weekday[] = [
@@ -525,7 +526,7 @@ const seedVenues: NewVenue[] = [
 ];
 
 async function seed() {
-	const databaseUrl = process.env.DATABASE_URL;
+	const databaseUrl = resolveDatabaseUrl();
 	if (!databaseUrl) throw new Error('DATABASE_URL is not set');
 
 	const client = postgres(databaseUrl, {

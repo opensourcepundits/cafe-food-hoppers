@@ -3,6 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
 import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { resolveDatabaseUrl } from './env';
 import * as schema from './schema';
 
 function isNeon(url: string): boolean {
@@ -10,10 +11,10 @@ function isNeon(url: string): boolean {
 }
 
 function createDb() {
-	const databaseUrl = env.DATABASE_URL;
+	const databaseUrl = resolveDatabaseUrl(env);
 	if (!databaseUrl) {
 		throw new Error(
-			'DATABASE_URL is not set. Add the Neon pooled URL in Vercel → Settings → Environment Variables (Production and Preview), then redeploy.'
+			'DATABASE_URL is not set. Vercel’s Neon integration stores it as CAFE_DB_DATABASE_URL — that name is also accepted. Redeploy after the storage is connected.'
 		);
 	}
 

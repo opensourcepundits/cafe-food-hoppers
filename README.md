@@ -35,6 +35,8 @@ Local Postgres is published on **port 5433** so it does not collide with an exis
 | --- | --- | --- |
 | `DATABASE_URL` | Yes | App connection string. Local Docker, or Neon **pooled** (`-pooler`) on Vercel. |
 | `DATABASE_URL_UNPOOLED` | Neon only | Direct Neon URL for `drizzle-kit migrate`. Pooled URLs can fail migrations. |
+| `CAFE_DB_DATABASE_URL` | Alternative | Same as `DATABASE_URL` when Vercel’s Neon integration prefixes the store name. |
+| `CAFE_DB_DATABASE_URL_UNPOOLED` | Alternative | Same as `DATABASE_URL_UNPOOLED` from that integration. |
 
 Copy [`.env.example`](.env.example). Never commit `.env`.
 
@@ -67,7 +69,9 @@ Commit the new files under `drizzle/`.
    - `DATABASE_URL` — Neon **pooled** string (`ep-…-pooler.…`, `sslmode=require`)
    - `DATABASE_URL_UNPOOLED` — Neon **direct** string (no `-pooler`)
 
-   After saving variables, **redeploy**. A missing `DATABASE_URL` used to fail `npm run build` during SvelteKit’s server analysis; the app still needs that variable at runtime.
+   Connecting Neon via **Vercel → Storage** is enough: those values arrive as `CAFE_DB_DATABASE_URL` and `CAFE_DB_DATABASE_URL_UNPOOLED`. The app reads both naming styles.
+
+   After saving variables, **redeploy**. A missing `DATABASE_URL` used to fail `npm run build` during SvelteKit’s server analysis; the app still needs a database URL at runtime.
 5. Apply migrations and seed **once** against Neon from your machine:
 
 ```bash

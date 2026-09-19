@@ -3,7 +3,7 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
-	let { children } = $props();
+	let { children, data } = $props();
 
 	const path = $derived(page.url.pathname);
 </script>
@@ -40,6 +40,16 @@
 				>
 					Specials
 				</a>
+				{#if data.admin}
+					<a
+						href="/admin"
+						class="border-b pb-0.5 {path.startsWith('/admin')
+							? 'border-ink text-ink'
+							: 'border-transparent text-muted hover:text-ink'}"
+					>
+						Admin
+					</a>
+				{/if}
 			</nav>
 		</div>
 	</header>

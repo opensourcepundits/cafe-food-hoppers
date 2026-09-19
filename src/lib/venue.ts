@@ -215,6 +215,59 @@ export function orderedWeekdays(): Weekday[] {
 	return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 }
 
+export function slugify(name: string): string {
+	const slug = name
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.slice(0, 80);
+	return slug || 'venue';
+}
+
+export function emptyOpeningHours(): OpeningHours {
+	const hours: OpeningHours = { timezone: MAURITIUS_TZ };
+	for (const day of orderedWeekdays()) {
+		hours[day] = { open: '08:00', close: '17:00', closed: false };
+	}
+	return hours;
+}
+
+export function isoToDatetimeLocal(iso: string | null | undefined): string {
+	if (!iso) return '';
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return '';
+	const parts = Object.fromEntries(
+		new Intl.DateTimeFormat('en-GB', {
+			timeZone: MAURITIUS_TZ,
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+			hourCycle: 'h23'
+		})
+			.formatToParts(date)
+			.map((part) => [part.type, part.value])
+	);
+	return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+export function datetimeLocalToIso(value: string): string | null {
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmed)) {
+		return `${trimmed}:00+04:00`;
+	}
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(trimmed)) {
+		return trimmed.includes('+') || trimmed.endsWith('Z') ? trimmed : `${trimmed}+04:00`;
+	}
+	const parsed = Date.parse(trimmed);
+	if (Number.isNaN(parsed)) return null;
+	return new Date(parsed).toISOString();
+}
+
 export function isAnnouncementActive(announcement: Announcement, at = new Date()): boolean {
 	const start = Date.parse(announcement.starts_at);
 	if (Number.isNaN(start) || at.getTime() < start) return false;

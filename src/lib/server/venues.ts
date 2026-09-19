@@ -1,6 +1,7 @@
 import { and, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { venues, type VenueRow } from '$lib/server/db/schema';
+import type { VenueWrite } from '$lib/server/venue-input';
 import {
 	activeAnnouncements,
 	isWorkFriendly,
@@ -144,6 +145,53 @@ export async function listVenues(filters: VenueFilters): Promise<LiveVenue[]> {
 export async function getVenueBySlug(slug: string): Promise<LiveVenue | null> {
 	const [row] = await db.select().from(venues).where(eq(venues.slug, slug)).limit(1);
 	return row ? withLiveState(mapVenue(row)) : null;
+}
+
+export async function listVenuesAdmin(): Promise<Venue[]> {
+	const rows = await db.select().from(venues).orderBy(venues.name);
+	return rows.map(mapVenue);
+}
+
+export async function getVenueById(id: string): Promise<Venue | null> {
+	const [row] = await db.select().from(venues).where(eq(venues.id, id)).limit(1);
+	return row ? mapVenue(row) : null;
+}
+
+export async function createVenue(input: VenueWrite): Promise<Venue> {
+	const slug = await uniqueSlug(input.slug);
+		const [row] = await db
+			.insert(venues)
+			.values({ ...input, slug })
+			.returning();
+		if (!row) throw new Error('Insert failed');
+		return mapVenue(row);
+}
+
+export async function updateVenue(id: string, input: VenueWrite): Promise<Venue | null> {
+	const slug = await uniqueSlug(input.slug, id);
+	const [row] = await db
+		.update(venues)
+		.set({ ...input, slug, updatedAt: new Date() })
+		.where(eq(venues.id, id))
+		.returning();
+	return row ? mapVenue(row) : null;
+}
+
+export async function deleteVenue(id: string): Promise<boolean> {
+	const deleted = await db.delete(venues).where(eq(venues.id, id)).returning();
+	return deleted.length > 0;
+}
+
+async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
+	let candidate = base;
+	let n = 2;
+	while (n < 50) {
+		const [row] = await db.select({ id: venues.id }).from(venues).where(eq(venues.slug, candidate)).limit(1);
+		if (!row || row.id === excludeId) return candidate;
+		candidate = `${base.slice(0, 70)}-${n}`;
+		n += 1;
+	}
+	return `${base.slice(0, 60)}-${Date.now().toString(36)}`;
 }
 
 export function withLiveState(venue: Venue): LiveVenue {

@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 export const actions: Actions = {
 	default: async ({ request, cookies, url }) => {
 		if (!adminPassword()) {
-			return fail(503, { error: 'Set ADMIN_PASSWORD first.' });
+			return fail(503, { error: 'Set CAFE_ADMIN_PASSWORD first.' });
 		}
 		const data = await request.formData();
 		const password = String(data.get('password') ?? '');

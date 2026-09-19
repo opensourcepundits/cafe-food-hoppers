@@ -14,7 +14,7 @@
 
 	{#if !data.configured}
 		<p class="mt-6 border border-accent px-4 py-3 text-sm text-accent">
-			Set <code class="font-mono">ADMIN_PASSWORD</code> in <code class="font-mono">.env</code> (and on Vercel), then
+			Set <code class="font-mono">CAFE_ADMIN_PASSWORD</code> in <code class="font-mono">.env</code> (and on Vercel), then
 			restart.
 		</p>
 	{:else}

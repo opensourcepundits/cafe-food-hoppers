@@ -6,7 +6,7 @@ const COOKIE = 'place_admin';
 const MAX_AGE = 60 * 60 * 24 * 7;
 
 export function adminPassword(): string | undefined {
-	const value = env.ADMIN_PASSWORD?.trim();
+	const value = env.CAFE_ADMIN_PASSWORD?.trim() || env.ADMIN_PASSWORD?.trim();
 	return value ? value : undefined;
 }
 

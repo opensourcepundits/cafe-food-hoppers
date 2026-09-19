@@ -37,15 +37,15 @@ Local Postgres is published on **port 5433** so it does not collide with an exis
 | `DATABASE_URL_UNPOOLED` | Neon only | Direct Neon URL for `drizzle-kit migrate`. Pooled URLs can fail migrations. |
 | `CAFE_DB_DATABASE_URL` | Alternative | Same as `DATABASE_URL` when Vercel’s Neon integration prefixes the store name. |
 | `CAFE_DB_DATABASE_URL_UNPOOLED` | Alternative | Same as `DATABASE_URL_UNPOOLED` from that integration. |
-| `ADMIN_PASSWORD` | Admin panel | Password for `/admin` (create/edit/delete places). Set on Vercel too. |
+| `CAFE_ADMIN_PASSWORD` | Admin panel | Password for `/admin`. `ADMIN_PASSWORD` is still accepted. |
 
 Copy [`.env.example`](.env.example). Never commit `.env`.
 
 ## Admin
 
-Open `/admin` and sign in with `ADMIN_PASSWORD`. From there you can add, edit, and delete places, including menus, hours, work setup, specials, and alerts.
+Open `/admin` and sign in with `CAFE_ADMIN_PASSWORD`. From there you can add, edit, and delete places, including menus, hours, work setup, specials, and alerts.
 
-Set the same `ADMIN_PASSWORD` on Vercel (Production and Preview). The login page is not linked from the public nav.
+Set the same variable on Vercel (Production and Preview). The login page is not linked from the public nav. `ADMIN_PASSWORD` still works if you already set that name.
 
 ## Database
 

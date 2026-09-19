@@ -63,9 +63,11 @@ Commit the new files under `drizzle/`.
 1. Create a Git repo and push this project.
 2. Create a [Neon](https://neon.tech) project (or **Vercel → Storage → Neon** and connect it). Postgres 16 is fine.
 3. Import the repo in Vercel. Framework: SvelteKit. Node 20+.
-4. Set environment variables on the Vercel project (Production + Preview):
+4. Set environment variables on the Vercel project for **Production, Preview, and Development**, and leave them available at **Build** and **Runtime**:
    - `DATABASE_URL` — Neon **pooled** string (`ep-…-pooler.…`, `sslmode=require`)
    - `DATABASE_URL_UNPOOLED` — Neon **direct** string (no `-pooler`)
+
+   After saving variables, **redeploy**. A missing `DATABASE_URL` used to fail `npm run build` during SvelteKit’s server analysis; the app still needs that variable at runtime.
 5. Apply migrations and seed **once** against Neon from your machine:
 
 ```bash

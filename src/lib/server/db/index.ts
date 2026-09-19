@@ -1,32 +1,13 @@
-import { env } from '$env/dynamic/private';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { resolveDatabaseUrl } from './env';
 import * as schema from './schema';
-
-function isNeon(url: string): boolean {
-	return url.includes('neon.tech') || url.includes('neon.build');
-}
+import { postgresOptions, requireDatabaseUrl } from './ensure-schema';
 
 function createDb() {
-	const databaseUrl = resolveDatabaseUrl(env);
-	if (!databaseUrl) {
-		throw new Error(
-			'DATABASE_URL is not set. Vercel’s Neon integration stores it as CAFE_DB_DATABASE_URL — that name is also accepted. Redeploy after the storage is connected.'
-		);
-	}
-
-	const neon = isNeon(databaseUrl);
-	return drizzle(
-		postgres(databaseUrl, {
-			ssl: neon ? 'require' : false,
-			prepare: false,
-			max: process.env.VERCEL ? 1 : 10,
-			idle_timeout: 20,
-			connect_timeout: 10
-		}),
-		{ schema }
-	);
+	const databaseUrl = requireDatabaseUrl();
+	return drizzle(postgres(databaseUrl, postgresOptions(databaseUrl, process.env.VERCEL ? 1 : 10)), {
+		schema
+	});
 }
 
 type Database = ReturnType<typeof createDb>;

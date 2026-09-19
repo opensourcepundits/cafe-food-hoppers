@@ -44,7 +44,7 @@ Copy [`.env.example`](.env.example). Never commit `.env`.
 
 Open `/admin/register` to create an account (email, phone, password). Sign in at `/admin/login` with **email or phone** plus password. From there you can add, edit, and delete places, including menus, hours, work setup, specials, and alerts.
 
-Anyone who registers can use the admin panel. The login page is not linked from the public nav until you are signed in.
+The `users` and `sessions` tables are created automatically on the first request (no `npm run db:migrate` needed). Anyone who registers can use the admin panel. The login page is not linked from the public nav until you are signed in.
 
 ## Database
 
@@ -57,7 +57,7 @@ Migrations (run these on Neon):
 
 1. [`drizzle/0000_venues.sql`](drizzle/0000_venues.sql) — table, indexes, JSONB columns including `specials`
 2. [`drizzle/0001_updated_at.sql`](drizzle/0001_updated_at.sql) — `updated_at` trigger
-3. [`drizzle/0002_users.sql`](drizzle/0002_users.sql) — admin `users` and `sessions`
+3. [`drizzle/0002_users.sql`](drizzle/0002_users.sql) — admin `users` and `sessions` (also applied at runtime by [`src/lib/server/db/ensure-schema.ts`](src/lib/server/db/ensure-schema.ts))
 
 After changing `schema.ts`:
 
@@ -78,24 +78,16 @@ Commit the new files under `drizzle/`.
 
    Connecting Neon via **Vercel → Storage** is enough: those values arrive as `CAFE_DB_DATABASE_URL` and `CAFE_DB_DATABASE_URL_UNPOOLED`. The app reads both naming styles.
 
-   After saving variables, **redeploy**. A missing `DATABASE_URL` used to fail `npm run build` during SvelteKit’s server analysis; the app still needs a database URL at runtime.
-5. Apply migrations and seed **once** against Neon from your machine:
+   After saving variables, **redeploy**. The app creates `users` and `sessions` on the first request. Seed demo venues once if the directory is empty:
 
 ```bash
-# Direct URL — required for migrate
-set DATABASE_URL_UNPOOLED=postgresql://USER:PASSWORD@ep-xxx.REGION.aws.neon.tech/neondb?sslmode=require
-npm run db:migrate
-
-# Pooled or direct both work for seed
 set DATABASE_URL=postgresql://USER:PASSWORD@ep-xxx-pooler.REGION.aws.neon.tech/neondb?sslmode=require
 npm run db:seed
 ```
 
-On PowerShell use `$env:DATABASE_URL_UNPOOLED = "..."`.
+On PowerShell use `$env:DATABASE_URL = "..."`.
 
-6. Deploy. Later schema changes: commit a new file from `npm run db:generate`, then run `npm run db:migrate` against Neon (or set the Vercel build command to `npx drizzle-kit migrate && vite build` so production applies migrations on each deploy).
-
-The app uses Neon’s HTTP driver when `DATABASE_URL` points at `neon.tech`, and postgres.js against local Docker.
+The app uses postgres.js for Neon and local Docker.
 
 ## License
 

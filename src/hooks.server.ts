@@ -1,7 +1,10 @@
 import { redirect, type Handle } from '@sveltejs/kit';
 import { readSession } from '$lib/server/auth';
+import { ensureSchema } from '$lib/server/db/ensure-schema';
 
 export const handle: Handle = async ({ event, resolve }) => {
+	await ensureSchema();
+
 	const user = await readSession(event.cookies);
 	event.locals.user = user;
 	event.locals.admin = Boolean(user);

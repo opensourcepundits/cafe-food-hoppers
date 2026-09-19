@@ -61,3 +61,29 @@ export const venues = pgTable(
 
 export type VenueRow = typeof venues.$inferSelect;
 export type NewVenue = typeof venues.$inferInsert;
+
+export const users = pgTable('users', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	email: text('email').notNull().unique(),
+	phone: text('phone').notNull().unique(),
+	passwordHash: text('password_hash').notNull(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export const sessions = pgTable(
+	'sessions',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		tokenHash: text('token_hash').notNull().unique(),
+		expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [index('idx_sessions_user').on(table.userId), index('idx_sessions_expires').on(table.expiresAt)]
+);
+
+export type UserRow = typeof users.$inferSelect;
+export type SessionRow = typeof sessions.$inferSelect;

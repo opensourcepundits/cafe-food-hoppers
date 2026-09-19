@@ -1,14 +1,20 @@
 import { redirect, type Handle } from '@sveltejs/kit';
-import { hasAdminSession } from '$lib/server/admin';
+import { readSession } from '$lib/server/auth';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	event.locals.admin = hasAdminSession(event.cookies);
+	const user = await readSession(event.cookies);
+	event.locals.user = user;
+	event.locals.admin = Boolean(user);
 
 	const path = event.url.pathname;
 	const isAdminApp = path === '/admin' || path.startsWith('/admin/');
-	const isLogin = path === '/admin/login' || path === '/admin/login/';
+	const isPublicAdmin =
+		path === '/admin/login' ||
+		path === '/admin/login/' ||
+		path === '/admin/register' ||
+		path === '/admin/register/';
 
-	if (isAdminApp && !isLogin && !event.locals.admin) {
+	if (isAdminApp && !isPublicAdmin && !event.locals.admin) {
 		const next = path === '/admin' ? '/admin' : path;
 		redirect(303, `/admin/login?next=${encodeURIComponent(next)}`);
 	}

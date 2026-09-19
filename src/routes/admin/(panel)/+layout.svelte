@@ -3,6 +3,7 @@
 
 	let { children } = $props();
 	const path = $derived(page.url.pathname);
+	const email = $derived(page.data.user?.email);
 </script>
 
 <div class="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
@@ -27,6 +28,9 @@
 		>
 			New
 		</a>
+		{#if email}
+			<span class="normal-case tracking-normal text-muted">{email}</span>
+		{/if}
 		<form method="POST" action="/admin?/logout">
 			<button type="submit" class="text-muted hover:text-ink">Sign out</button>
 		</form>

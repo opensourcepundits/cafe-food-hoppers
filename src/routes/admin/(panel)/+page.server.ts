@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { listVenuesAdmin } from '$lib/server/venues';
-import { clearAdminSession } from '$lib/server/admin';
+import { clearAdminSession } from '$lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 export const actions: Actions = {
 	logout: async ({ cookies }) => {
-		clearAdminSession(cookies);
+		await clearAdminSession(cookies);
 		redirect(303, '/admin/login');
 	}
 };

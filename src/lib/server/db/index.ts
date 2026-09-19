@@ -1,7 +1,5 @@
 import { env } from '$env/dynamic/private';
-import { neon } from '@neondatabase/serverless';
-import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
-import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { resolveDatabaseUrl } from './env';
 import * as schema from './schema';
@@ -18,12 +16,11 @@ function createDb() {
 		);
 	}
 
-	if (isNeon(databaseUrl)) {
-		return drizzleNeon(neon(databaseUrl), { schema });
-	}
-
-	return drizzlePostgres(
+	const neon = isNeon(databaseUrl);
+	return drizzle(
 		postgres(databaseUrl, {
+			ssl: neon ? 'require' : false,
+			prepare: false,
 			max: process.env.VERCEL ? 1 : 10,
 			idle_timeout: 20,
 			connect_timeout: 10

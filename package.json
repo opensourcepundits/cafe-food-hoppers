@@ -37,7 +37,7 @@
 	},
 	"dependencies": {
 		"@lucide/svelte": "^1.47.0",
-		"@neondatabase/serverless": "^1.1.0",
+		"@supabase/supabase-js": "^2.116.0",
 		"drizzle-orm": "^0.45.2",
 		"postgres": "^3.4.9"
 	}

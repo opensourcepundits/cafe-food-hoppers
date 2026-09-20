@@ -1,18 +1,14 @@
 import { env } from '$env/dynamic/private';
 import postgres from 'postgres';
-import { resolveDatabaseUrl } from './env';
+import { requiresSsl, resolveDatabaseUrl } from './env';
 
 let pending: Promise<void> | undefined;
-
-export function isNeonUrl(url: string): boolean {
-	return url.includes('neon.tech') || url.includes('neon.build');
-}
 
 export function requireDatabaseUrl(): string {
 	const databaseUrl = resolveDatabaseUrl(env);
 	if (!databaseUrl) {
 		throw new Error(
-			'DATABASE_URL is not set. Vercel’s Neon integration stores it as CAFE_DB_DATABASE_URL — that name is also accepted. Redeploy after the storage is connected.'
+			'DATABASE_URL is not set. Add the Supabase pooled URI in Vercel → Settings → Environment Variables, then redeploy.'
 		);
 	}
 	return databaseUrl;
@@ -20,7 +16,7 @@ export function requireDatabaseUrl(): string {
 
 export function postgresOptions(url: string, max: number): postgres.Options<Record<string, never>> {
 	return {
-		ssl: isNeonUrl(url) ? 'require' : false,
+		ssl: requiresSsl(url) ? 'require' : false,
 		prepare: false,
 		max,
 		idle_timeout: 20,
@@ -38,6 +34,35 @@ async function applySchema(): Promise<void> {
 	const url = requireDatabaseUrl();
 	const sql = postgres(url, postgresOptions(url, 1));
 	try {
+		await sql.unsafe(`
+			CREATE TABLE IF NOT EXISTS venues (
+				id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+				name text NOT NULL,
+				slug text NOT NULL,
+				district text NOT NULL,
+				lat numeric(9, 6),
+				lng numeric(9, 6),
+				is_featured boolean DEFAULT false NOT NULL,
+				featured_priority integer DEFAULT 0 NOT NULL,
+				work_info jsonb DEFAULT '{}'::jsonb NOT NULL,
+				opening_hours jsonb DEFAULT '{}'::jsonb NOT NULL,
+				announcements jsonb DEFAULT '[]'::jsonb NOT NULL,
+				specials jsonb DEFAULT '[]'::jsonb NOT NULL,
+				menu jsonb DEFAULT '[]'::jsonb NOT NULL,
+				contact jsonb DEFAULT '{}'::jsonb NOT NULL,
+				created_at timestamptz DEFAULT now() NOT NULL,
+				updated_at timestamptz DEFAULT now() NOT NULL,
+				CONSTRAINT venues_slug_unique UNIQUE (slug)
+			)
+		`);
+		await sql.unsafe(
+			`CREATE INDEX IF NOT EXISTS idx_venues_featured ON venues (is_featured DESC, featured_priority DESC)`
+		);
+		await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_venues_district ON venues (district)`);
+		await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_venues_work_info ON venues USING gin (work_info)`);
+		await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_venues_menu ON venues USING gin (menu jsonb_path_ops)`);
+		await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_venues_specials ON venues USING gin (specials)`);
+
 		await sql.unsafe(`
 			CREATE TABLE IF NOT EXISTS users (
 				id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -79,6 +104,13 @@ async function applySchema(): Promise<void> {
 				RETURN NEW;
 			END;
 			$$ LANGUAGE plpgsql
+		`);
+		await sql.unsafe(`DROP TRIGGER IF EXISTS venues_updated_at ON venues`);
+		await sql.unsafe(`
+			CREATE TRIGGER venues_updated_at
+			BEFORE UPDATE ON venues
+			FOR EACH ROW
+			EXECUTE FUNCTION set_updated_at()
 		`);
 		await sql.unsafe(`DROP TRIGGER IF EXISTS users_updated_at ON users`);
 		await sql.unsafe(`

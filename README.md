@@ -2,7 +2,7 @@
 
 A minimalist directory of Mauritius cafes and restaurants for digital nomads, remote workers, and locals. Find work-friendly spots, check hours in Indian/Mauritius time, scan menus, and see live alerts and specials.
 
-**Stack:** SvelteKit 5 · TypeScript · Tailwind CSS · PostgreSQL (JSONB) · Drizzle ORM · Vercel + Neon
+**Stack:** SvelteKit 5 · TypeScript · Tailwind CSS · PostgreSQL (JSONB) · Drizzle ORM · Vercel + Supabase
 
 ## Local development
 
@@ -33,10 +33,12 @@ Local Postgres is published on **port 5433** so it does not collide with an exis
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | Yes | App connection string. Local Docker, or Neon **pooled** (`-pooler`) on Vercel. |
-| `DATABASE_URL_UNPOOLED` | Neon only | Direct Neon URL for `drizzle-kit migrate`. Pooled URLs can fail migrations. |
-| `CAFE_DB_DATABASE_URL` | Alternative | Same as `DATABASE_URL` when Vercel’s Neon integration prefixes the store name. |
-| `CAFE_DB_DATABASE_URL_UNPOOLED` | Alternative | Same as `DATABASE_URL_UNPOOLED` from that integration. |
+| `DATABASE_URL` | Yes | App connection string. Local Docker, or Supabase **transaction pooler** (port **6543**). |
+| `DATABASE_URL_UNPOOLED` | Optional | Direct Supabase URL (`db.PROJECT.supabase.co:5432`) for one-off tools. |
+| `SUPABASE_DATABASE_URL` | Alternative | Same as `DATABASE_URL` if you prefer the Supabase name. |
+| `POSTGRES_URL` | Alternative | Also accepted (Vercel/Supabase integrations). |
+| `PUBLIC_SUPABASE_URL` | Yes (client) | `https://PROJECT.supabase.co` |
+| `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes (client) | Supabase publishable (anon) key |
 
 Copy [`.env.example`](.env.example). Never commit `.env`.
 
@@ -44,7 +46,7 @@ Copy [`.env.example`](.env.example). Never commit `.env`.
 
 Open `/admin/register` to create an account (email, phone, password). Sign in at `/admin/login` with **email or phone** plus password. From there you can add, edit, and delete places, including menus, hours, work setup, specials, and alerts.
 
-The `users` and `sessions` tables are created automatically on the first request (no `npm run db:migrate` needed). Anyone who registers can use the admin panel. The login page is not linked from the public nav until you are signed in.
+Tables are created automatically on the first request. Anyone who registers can use the admin panel. The login page is not linked from the public nav until you are signed in.
 
 ## Database
 
@@ -53,41 +55,37 @@ The `users` and `sessions` tables are created automatically on the first request
 Canonical SQL: [`src/lib/server/db/schema.sql`](src/lib/server/db/schema.sql)  
 Drizzle schema: [`src/lib/server/db/schema.ts`](src/lib/server/db/schema.ts)
 
-Migrations (run these on Neon):
+Schema is applied at runtime by [`src/lib/server/db/ensure-schema.ts`](src/lib/server/db/ensure-schema.ts) (`venues`, `users`, `sessions`). SQL files in `drizzle/` are optional history.
 
-1. [`drizzle/0000_venues.sql`](drizzle/0000_venues.sql) — table, indexes, JSONB columns including `specials`
-2. [`drizzle/0001_updated_at.sql`](drizzle/0001_updated_at.sql) — `updated_at` trigger
-3. [`drizzle/0002_users.sql`](drizzle/0002_users.sql) — admin `users` and `sessions` (also applied at runtime by [`src/lib/server/db/ensure-schema.ts`](src/lib/server/db/ensure-schema.ts))
-
-After changing `schema.ts`:
+After changing `schema.ts` for local iteration:
 
 ```bash
 npm run db:generate -- --name short_description
 ```
 
-Commit the new files under `drizzle/`.
+## Deploy to Vercel + Supabase
 
-## Deploy to Vercel + Neon
+1. Create a [Supabase](https://supabase.com) project.
+2. **Settings → Database → Connection string → URI**. Choose **Transaction** pooler (host `*.pooler.supabase.com`, port **6543**). Copy that URI.
+3. In Vercel → **Settings → Environment Variables**, set for **Production and Preview**:
+   - `DATABASE_URL` — the **transaction pooler** URI (`sslmode=require` is fine)
+   - `PUBLIC_SUPABASE_URL` — `https://PROJECT.supabase.co`
+   - `PUBLIC_SUPABASE_PUBLISHABLE_KEY` — the publishable key from **Settings → API**
+4. Redeploy. The first request creates tables. Then open `/admin/register` and create your account.
+5. Optional: seed demo venues from this machine:
 
-1. Create a Git repo and push this project.
-2. Create a [Neon](https://neon.tech) project (or **Vercel → Storage → Neon** and connect it). Postgres 16 is fine.
-3. Import the repo in Vercel. Framework: SvelteKit. Node 20+.
-4. Set environment variables on the Vercel project for **Production, Preview, and Development**, and leave them available at **Build** and **Runtime**:
-   - `DATABASE_URL` — Neon **pooled** string (`ep-…-pooler.…`, `sslmode=require`)
-   - `DATABASE_URL_UNPOOLED` — Neon **direct** string (no `-pooler`)
-
-   Connecting Neon via **Vercel → Storage** is enough: those values arrive as `CAFE_DB_DATABASE_URL` and `CAFE_DB_DATABASE_URL_UNPOOLED`. The app reads both naming styles.
-
-   After saving variables, **redeploy**. The app creates `users` and `sessions` on the first request. Seed demo venues once if the directory is empty:
-
-```bash
-set DATABASE_URL=postgresql://USER:PASSWORD@ep-xxx-pooler.REGION.aws.neon.tech/neondb?sslmode=require
+```powershell
+$env:DATABASE_URL = "postgresql://postgres.PROJECT:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres"
 npm run db:seed
 ```
 
-On PowerShell use `$env:DATABASE_URL = "..."`.
+To copy existing Neon rows into Supabase, dump and restore once:
 
-The app uses postgres.js for Neon and local Docker.
+```powershell
+pg_dump --no-owner --no-acl $env:NEON_URL | psql $env:DATABASE_URL
+```
+
+Then point Vercel `DATABASE_URL` at Supabase and redeploy. You can disconnect the Neon store afterward.
 
 ## License
 

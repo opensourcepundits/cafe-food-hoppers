@@ -26,7 +26,10 @@ export function postgresOptions(url: string, max: number): postgres.Options<Reco
 
 /** Idempotent schema for serverless. No `drizzle-kit migrate` required. */
 export function ensureSchema(): Promise<void> {
-	pending ??= applySchema();
+	pending ??= applySchema().catch((error) => {
+		pending = undefined;
+		throw error;
+	});
 	return pending;
 }
 
@@ -34,6 +37,14 @@ async function applySchema(): Promise<void> {
 	const url = requireDatabaseUrl();
 	const sql = postgres(url, postgresOptions(url, 1));
 	try {
+		const [row] = await sql<{ ready: boolean }>`
+			select
+				to_regclass('public.venues') is not null
+				and to_regclass('public.users') is not null
+				and to_regclass('public.sessions') is not null as ready
+		`;
+		if (row?.ready) return;
+
 		await sql.unsafe(`
 			CREATE TABLE IF NOT EXISTS venues (
 				id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -53,17 +64,13 @@ async function applySchema(): Promise<void> {
 				created_at timestamptz DEFAULT now() NOT NULL,
 				updated_at timestamptz DEFAULT now() NOT NULL,
 				CONSTRAINT venues_slug_unique UNIQUE (slug)
-			)
-		`);
-		await sql.unsafe(
-			`CREATE INDEX IF NOT EXISTS idx_venues_featured ON venues (is_featured DESC, featured_priority DESC)`
-		);
-		await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_venues_district ON venues (district)`);
-		await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_venues_work_info ON venues USING gin (work_info)`);
-		await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_venues_menu ON venues USING gin (menu jsonb_path_ops)`);
-		await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_venues_specials ON venues USING gin (specials)`);
+			);
+			CREATE INDEX IF NOT EXISTS idx_venues_featured ON venues (is_featured DESC, featured_priority DESC);
+			CREATE INDEX IF NOT EXISTS idx_venues_district ON venues (district);
+			CREATE INDEX IF NOT EXISTS idx_venues_work_info ON venues USING gin (work_info);
+			CREATE INDEX IF NOT EXISTS idx_venues_menu ON venues USING gin (menu jsonb_path_ops);
+			CREATE INDEX IF NOT EXISTS idx_venues_specials ON venues USING gin (specials);
 
-		await sql.unsafe(`
 			CREATE TABLE IF NOT EXISTS users (
 				id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 				email text NOT NULL,
@@ -73,9 +80,7 @@ async function applySchema(): Promise<void> {
 				updated_at timestamptz DEFAULT now() NOT NULL,
 				CONSTRAINT users_email_unique UNIQUE (email),
 				CONSTRAINT users_phone_unique UNIQUE (phone)
-			)
-		`);
-		await sql.unsafe(`
+			);
 			CREATE TABLE IF NOT EXISTS sessions (
 				id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 				user_id uuid NOT NULL,
@@ -83,41 +88,33 @@ async function applySchema(): Promise<void> {
 				expires_at timestamptz NOT NULL,
 				created_at timestamptz DEFAULT now() NOT NULL,
 				CONSTRAINT sessions_token_hash_unique UNIQUE (token_hash)
-			)
-		`);
-		await sql.unsafe(`
+			);
 			DO $$ BEGIN
 				ALTER TABLE sessions
 				ADD CONSTRAINT sessions_user_id_users_id_fk
 				FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 			EXCEPTION
 				WHEN duplicate_object THEN NULL;
-			END $$
-		`);
-		await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id)`);
-		await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions (expires_at)`);
-		await sql.unsafe(`
+			END $$;
+			CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
+			CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions (expires_at);
 			CREATE OR REPLACE FUNCTION set_updated_at()
 			RETURNS TRIGGER AS $$
 			BEGIN
 				NEW.updated_at = NOW();
 				RETURN NEW;
 			END;
-			$$ LANGUAGE plpgsql
-		`);
-		await sql.unsafe(`DROP TRIGGER IF EXISTS venues_updated_at ON venues`);
-		await sql.unsafe(`
+			$$ LANGUAGE plpgsql;
+			DROP TRIGGER IF EXISTS venues_updated_at ON venues;
 			CREATE TRIGGER venues_updated_at
 			BEFORE UPDATE ON venues
 			FOR EACH ROW
-			EXECUTE FUNCTION set_updated_at()
-		`);
-		await sql.unsafe(`DROP TRIGGER IF EXISTS users_updated_at ON users`);
-		await sql.unsafe(`
+			EXECUTE FUNCTION set_updated_at();
+			DROP TRIGGER IF EXISTS users_updated_at ON users;
 			CREATE TRIGGER users_updated_at
 			BEFORE UPDATE ON users
 			FOR EACH ROW
-			EXECUTE FUNCTION set_updated_at()
+			EXECUTE FUNCTION set_updated_at();
 		`);
 	} finally {
 		await sql.end({ timeout: 5 });

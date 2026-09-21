@@ -17,6 +17,7 @@ import {
 	type OutletAccess,
 	type Special,
 	type Venue,
+	type VenueImage,
 	type WifiQuality,
 	type WorkInfo
 } from '$lib/venue';
@@ -63,7 +64,8 @@ export function parseVenuePayload(raw: unknown): { ok: true; value: VenueWrite }
 			announcements: parseAnnouncements(input.announcements),
 			specials: parseSpecials(input.specials),
 			menu: parseMenu(input.menu),
-			contact
+			contact,
+			images: parseImages(input.images)
 		}
 	};
 }
@@ -216,6 +218,23 @@ function parseContact(value: unknown): Contact {
 		email: asString(raw.email) || undefined,
 		google_maps: asString(raw.google_maps) || undefined
 	};
+}
+
+function parseImages(value: unknown): VenueImage[] {
+	if (!Array.isArray(value)) return [];
+	const images: VenueImage[] = [];
+	for (const item of value) {
+		const raw = asRecord(item);
+		const url = asString(raw.url);
+		if (!url) continue;
+		images.push({
+			id: asString(raw.id) || `image-${images.length + 1}`,
+			url,
+			path: asString(raw.path)
+		});
+		if (images.length >= 5) break;
+	}
+	return images;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

@@ -37,12 +37,13 @@ async function applySchema(): Promise<void> {
 	const url = requireDatabaseUrl();
 	const sql = postgres(url, postgresOptions(url, 1));
 	try {
-		const [row] = await sql<{ ready: boolean }>`
-			select
+		const rows = (await sql.unsafe(
+			`select
 				to_regclass('public.venues') is not null
 				and to_regclass('public.users') is not null
-				and to_regclass('public.sessions') is not null as ready
-		`;
+				and to_regclass('public.sessions') is not null as ready`
+		)) as { ready: boolean }[];
+		const row = rows[0];
 		if (row?.ready) return;
 
 		await sql.unsafe(`

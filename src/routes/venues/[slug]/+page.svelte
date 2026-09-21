@@ -11,8 +11,10 @@
 	import Wifi from '@lucide/svelte/icons/wifi';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import {
+		dayHoursLabel,
 		formatSpecialWhen,
 		hoursLabel,
+		mapsEmbedUrl,
 		mapsUrl,
 		mur,
 		noiseLabel,
@@ -177,7 +179,7 @@
 							{#if !slot || slot.closed}
 								Closed
 							{:else}
-								{slot.open}–{slot.close}
+								{dayHoursLabel(slot)}
 							{/if}
 						</span>
 					</li>
@@ -230,7 +232,24 @@
 						</a>
 					</li>
 				{/if}
+				{#if maps}
+					<li>
+						<a href={maps} class="inline-flex items-center gap-2 hover:underline" target="_blank" rel="noreferrer">
+							<MapPin class="size-4 text-muted" />
+							Google Maps
+						</a>
+					</li>
+				{/if}
 			</ul>
+			{#if venue.lat !== null && venue.lng !== null}
+				<iframe
+					title="Map pin"
+					class="mt-4 h-48 w-full border border-line"
+					src={mapsEmbedUrl(venue.lat, venue.lng)}
+					loading="lazy"
+					referrerpolicy="no-referrer-when-downgrade"
+				></iframe>
+			{/if}
 		</section>
 	</aside>
 </div>

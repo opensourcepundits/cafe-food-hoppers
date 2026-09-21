@@ -6,10 +6,17 @@
 		datetimeLocalToIso,
 		emptyOpeningHours,
 		isoToDatetimeLocal,
+		mapsEmbedUrl,
+		mapsPinForVenue,
+		normalizeDayHours,
+		normalizeOpeningHours,
 		orderedWeekdays,
+		parseMapsPin,
 		slugify,
 		weekdayLabel,
 		type Announcement,
+		type DayHours,
+		type HourSpan,
 		type MenuCategory,
 		type MenuItem,
 		type OpeningHours,
@@ -38,8 +45,7 @@
 		name: venue?.name ?? '',
 		slug: venue?.slug ?? '',
 		district: venue?.district ?? DISTRICTS[0],
-		lat: venue?.lat?.toString() ?? '',
-		lng: venue?.lng?.toString() ?? '',
+		googleMaps: venue ? mapsPinForVenue(venue) : '',
 		isFeatured: venue?.isFeatured ?? false,
 		featuredPriority: String(venue?.featuredPriority ?? 0),
 		wifi: venue?.workInfo.wifi ?? true,
@@ -49,12 +55,11 @@
 		laptopFriendly: venue?.workInfo.laptop_friendly ?? true,
 		noiseLevel: venue?.workInfo.noise_level ?? 'moderate',
 		workNotes: venue?.workInfo.notes ?? '',
-		hours: venue?.openingHours ?? emptyOpeningHours(),
+		hours: normalizeOpeningHours(venue?.openingHours ?? emptyOpeningHours()),
 		phone: venue?.contact.phone ?? '',
 		instagram: venue?.contact.instagram ?? '',
 		website: venue?.contact.website ?? '',
 		email: venue?.contact.email ?? '',
-		googleMaps: venue?.contact.google_maps ?? '',
 		menu: toMenu(venue?.menu),
 		specials: toSpecials(venue?.specials),
 		announcements: toAnnouncements(venue?.announcements)
@@ -69,8 +74,7 @@
 	let name = $state(seed.name);
 	let slug = $state(seed.slug);
 	let district = $state(seed.district);
-	let lat = $state(seed.lat);
-	let lng = $state(seed.lng);
+	let googleMaps = $state(seed.googleMaps);
 	let isFeatured = $state(seed.isFeatured);
 	let featuredPriority = $state(seed.featuredPriority);
 	let wifi = $state(seed.wifi);
@@ -85,7 +89,6 @@
 	let instagram = $state(seed.instagram);
 	let website = $state(seed.website);
 	let email = $state(seed.email);
-	let googleMaps = $state(seed.googleMaps);
 	let menu = $state<DraftCategory[]>(seed.menu);
 	let specials = $state<DraftSpecial[]>(seed.specials);
 	let announcements = $state<DraftAnnouncement[]>(seed.announcements);
@@ -95,8 +98,8 @@
 			name,
 			slug: slugTouched ? slug : slugify(name),
 			district,
-			lat: lat.trim() === '' ? null : Number(lat),
-			lng: lng.trim() === '' ? null : Number(lng),
+			lat: googleMaps.trim() ? (parseMapsPin(googleMaps)?.lat ?? venue?.lat ?? null) : null,
+			lng: googleMaps.trim() ? (parseMapsPin(googleMaps)?.lng ?? venue?.lng ?? null) : null,
 			isFeatured,
 			featuredPriority: Number(featuredPriority) || 0,
 			workInfo: {
@@ -108,7 +111,7 @@
 				noise_level: noiseLevel,
 				notes: workNotes
 			},
-			openingHours: hours,
+			openingHours: normalizeOpeningHours(hours),
 			contact: { phone, instagram, website, email, google_maps: googleMaps },
 			menu: menu.map((category) => ({
 				category: category.category,
@@ -229,17 +232,51 @@
 		];
 	}
 
+	const pin = $derived(parseMapsPin(googleMaps));
+
+	function dayHours(day: Weekday): DayHours {
+		return normalizeDayHours(hours[day]);
+	}
+
+	function setDayHours(day: Weekday, next: DayHours) {
+		hours = { ...hours, [day]: normalizeDayHours(next) };
+	}
+
 	function copyMonday() {
-		const monday = hours.monday ?? { open: '08:00', close: '17:00', closed: false };
+		const monday = dayHours('monday');
 		const next: OpeningHours = { ...hours };
-		for (const day of orderedWeekdays()) {
-			next[day] = { ...monday };
+		for (const weekday of orderedWeekdays()) {
+			next[weekday] = { ...monday, spans: monday.spans?.map((span) => ({ ...span })) };
 		}
 		hours = next;
 	}
 
-	function setDay(day: Weekday, patch: Partial<NonNullable<OpeningHours[Weekday]>>) {
-		hours = { ...hours, [day]: { open: '08:00', close: '17:00', closed: false, ...hours[day], ...patch } };
+	function setClosed(day: Weekday, closed: boolean) {
+		setDayHours(day, { ...dayHours(day), closed });
+	}
+
+	function setSpan(day: Weekday, index: number, patch: Partial<HourSpan>) {
+		const current = dayHours(day);
+		const spans = (current.spans ?? []).map((span, spanIndex) =>
+			spanIndex === index ? { ...span, ...patch } : span
+		);
+		setDayHours(day, { ...current, spans });
+	}
+
+	function addSpan(day: Weekday) {
+		const current = dayHours(day);
+		const last = current.spans?.[current.spans.length - 1];
+		setDayHours(day, {
+			...current,
+			closed: false,
+			spans: [...(current.spans ?? []), { open: last ? '18:00' : '08:00', close: last ? '21:00' : '17:00' }]
+		});
+	}
+
+	function removeSpan(day: Weekday, index: number) {
+		const current = dayHours(day);
+		const spans = (current.spans ?? []).filter((_, spanIndex) => spanIndex !== index);
+		setDayHours(day, { ...current, spans });
 	}
 
 	function tagsValue(item: DraftItem): string {
@@ -313,12 +350,31 @@
 			<Field label="Featured priority">
 				<input class={field} type="number" bind:value={featuredPriority} />
 			</Field>
-			<Field label="Latitude">
-				<input class={field} inputmode="decimal" bind:value={lat} placeholder="-20.01" />
-			</Field>
-			<Field label="Longitude">
-				<input class={field} inputmode="decimal" bind:value={lng} placeholder="57.58" />
-			</Field>
+			<div class="sm:col-span-2">
+				<Field label="Google Maps pin">
+					<input
+						class={field}
+						bind:value={googleMaps}
+						placeholder="Paste a Google Maps place or pin link"
+					/>
+				</Field>
+				<p class="mt-1 text-xs text-muted">
+					Open the place in Google Maps, copy the share link, and paste it here.
+				</p>
+				{#if pin}
+					<iframe
+						title="Map pin"
+						class="mt-3 h-56 w-full border border-line"
+						src={mapsEmbedUrl(pin.lat, pin.lng)}
+						loading="lazy"
+						referrerpolicy="no-referrer-when-downgrade"
+					></iframe>
+				{:else if googleMaps.trim()}
+					<p class="mt-2 text-xs text-muted">
+						Link saved. If the pin preview is missing, open the place and copy the full Maps URL instead of a short link.
+					</p>
+				{/if}
+			</div>
 		</div>
 		<label class="mt-4 flex cursor-pointer items-center gap-2 text-sm">
 			<input type="checkbox" bind:checked={isFeatured} />
@@ -370,32 +426,51 @@
 			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Hours</h3>
 			<button type="button" class={btnGhost} onclick={copyMonday}>Copy Monday to all days</button>
 		</div>
+		<p class="mt-2 text-xs text-muted">
+			Add hours for a second sitting, for example 09:00–14:00 then 18:00–21:00.
+		</p>
 		<ul class="mt-4 divide-y divide-line border-y border-line">
 			{#each orderedWeekdays() as day (day)}
-				<li class="grid grid-cols-[4.5rem_auto_1fr_1fr] items-center gap-3 py-2 text-sm">
-					<span>{weekdayLabel(day)}</span>
-					<label class="flex items-center gap-2 text-muted">
-						<input
-							type="checkbox"
-							checked={hours[day]?.closed ?? false}
-							onchange={(event) => setDay(day, { closed: event.currentTarget.checked })}
-						/>
-						Closed
-					</label>
-					<input
-						class={field}
-						type="time"
-						disabled={hours[day]?.closed}
-						value={hours[day]?.open ?? '08:00'}
-						onchange={(event) => setDay(day, { open: event.currentTarget.value })}
-					/>
-					<input
-						class={field}
-						type="time"
-						disabled={hours[day]?.closed}
-						value={hours[day]?.close ?? '17:00'}
-						onchange={(event) => setDay(day, { close: event.currentTarget.value })}
-					/>
+				{@const slot = dayHours(day)}
+				<li class="grid gap-3 py-3 text-sm sm:grid-cols-[4.5rem_1fr]">
+					<span class="pt-2">{weekdayLabel(day)}</span>
+					<div>
+						<label class="flex items-center gap-2 text-muted">
+							<input
+								type="checkbox"
+								checked={slot.closed ?? false}
+								onchange={(event) => setClosed(day, event.currentTarget.checked)}
+							/>
+							Closed
+						</label>
+						{#if !slot.closed}
+							<ul class="mt-2 space-y-2">
+								{#each slot.spans ?? [] as span, index (index)}
+									<li class="flex flex-wrap items-center gap-2">
+										<input
+											class="{field} w-[8.5rem]"
+											type="time"
+											value={span.open}
+											onchange={(event) => setSpan(day, index, { open: event.currentTarget.value })}
+										/>
+										<span class="text-muted">to</span>
+										<input
+											class="{field} w-[8.5rem]"
+											type="time"
+											value={span.close}
+											onchange={(event) => setSpan(day, index, { close: event.currentTarget.value })}
+										/>
+										{#if (slot.spans?.length ?? 0) > 1}
+											<button type="button" class={btnGhost} onclick={() => removeSpan(day, index)}
+												>Remove</button
+											>
+										{/if}
+									</li>
+								{/each}
+							</ul>
+							<button type="button" class="{btnGhost} mt-2" onclick={() => addSpan(day)}>Add hours</button>
+						{/if}
+					</div>
 				</li>
 			{/each}
 		</ul>
@@ -408,9 +483,6 @@
 			<Field label="Instagram"><input class={field} bind:value={instagram} placeholder="handle" /></Field>
 			<Field label="Website"><input class={field} bind:value={website} /></Field>
 			<Field label="Email"><input class={field} type="email" bind:value={email} /></Field>
-			<div class="sm:col-span-2">
-				<Field label="Google Maps URL"><input class={field} bind:value={googleMaps} /></Field>
-			</div>
 		</div>
 	</section>
 

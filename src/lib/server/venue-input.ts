@@ -1,11 +1,15 @@
 import {
 	DISTRICTS,
 	datetimeLocalToIso,
+	emptyOpeningHours,
+	orderedWeekdays,
+	parseMapsPin,
 	slugify,
 	type Announcement,
 	type AnnouncementType,
 	type Contact,
 	type DayHours,
+	type HourSpan,
 	type MenuCategory,
 	type MenuItem,
 	type NoiseLevel,
@@ -14,9 +18,7 @@ import {
 	type Special,
 	type Venue,
 	type WifiQuality,
-	type WorkInfo,
-	emptyOpeningHours,
-	orderedWeekdays
+	type WorkInfo
 } from '$lib/venue';
 
 export type VenueWrite = Omit<Venue, 'id' | 'createdAt' | 'updatedAt'>;
@@ -37,11 +39,13 @@ export function parseVenuePayload(raw: unknown): { ok: true; value: VenueWrite }
 
 	const slug = slugify(asString(input.slug) || name);
 	const district = asString(input.district) || DISTRICTS[0];
-	const lat = asNumber(input.lat, true);
-	const lng = asNumber(input.lng, true);
+	const contact = parseContact(input.contact);
+	const pin = parseMapsPin(contact.google_maps ?? '');
+	const lat = pin?.lat ?? asNumber(input.lat, true);
+	const lng = pin?.lng ?? asNumber(input.lng, true);
 
 	if ((lat === null) !== (lng === null)) {
-		return { ok: false, error: 'Latitude and longitude must both be set, or both left blank.' };
+		return { ok: false, error: 'Paste a Google Maps pin that includes the place location.' };
 	}
 
 	return {
@@ -59,7 +63,7 @@ export function parseVenuePayload(raw: unknown): { ok: true; value: VenueWrite }
 			announcements: parseAnnouncements(input.announcements),
 			specials: parseSpecials(input.specials),
 			menu: parseMenu(input.menu),
-			contact: parseContact(input.contact)
+			contact
 		}
 	};
 }
@@ -100,13 +104,32 @@ function parseHours(value: unknown): OpeningHours {
 	for (const day of orderedWeekdays()) {
 		const raw = asRecord(input[day]);
 		const closed = Boolean(raw.closed);
+		const spans = parseSpans(raw.spans);
+		if (!spans.length) {
+			spans.push({
+				open: asTime(raw.open, '08:00'),
+				close: asTime(raw.close, '17:00')
+			});
+		}
 		hours[day] = {
-			open: asTime(raw.open, '08:00'),
-			close: asTime(raw.close, '17:00'),
-			closed
+			closed,
+			open: spans[0].open,
+			close: spans[0].close,
+			spans
 		} satisfies DayHours;
 	}
 	return Object.keys(asRecord(value)).length ? hours : emptyOpeningHours();
+}
+
+function parseSpans(value: unknown): HourSpan[] {
+	if (!Array.isArray(value)) return [];
+	return value.flatMap((item) => {
+		const raw = asRecord(item);
+		const open = asTime(raw.open, '');
+		const close = asTime(raw.close, '');
+		if (!open || !close) return [];
+		return [{ open, close }];
+	});
 }
 
 function parseAnnouncements(value: unknown): Announcement[] {
@@ -214,7 +237,8 @@ function asNumber(value: unknown, emptyAsNull = false): number | null {
 
 function asTime(value: unknown, fallback: string): string {
 	const text = asString(value);
-	return /^\d{2}:\d{2}$/.test(text) ? text : fallback;
+	const match = text.match(/^(\d{2}:\d{2})(?::\d{2})?$/);
+	return match ? match[1] : fallback;
 }
 
 export function isUniqueViolation(error: unknown): boolean {

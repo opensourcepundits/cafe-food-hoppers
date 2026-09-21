@@ -1,4 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
-export const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+export function getSupabase() {
+	const url = env.PUBLIC_SUPABASE_URL?.trim();
+	const key = env.PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
+	if (!url || !key) return null;
+	return createClient(url, key);
+}

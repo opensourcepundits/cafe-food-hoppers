@@ -10,16 +10,17 @@
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import Wifi from '@lucide/svelte/icons/wifi';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import MapEmbed from '$lib/components/MapEmbed.svelte';
 	import {
 		dayHoursLabel,
 		formatSpecialWhen,
 		hoursLabel,
-		mapsEmbedUrl,
 		mapsUrl,
 		mur,
 		noiseLabel,
 		orderedWeekdays,
 		outletLabel,
+		parseMapsPin,
 		weekdayLabel,
 		wifiLabel
 	} from '$lib/venue';
@@ -30,6 +31,11 @@
 	const maps = $derived(
 		venue.contact.google_maps ??
 			(venue.lat !== null && venue.lng !== null ? mapsUrl(venue.lat, venue.lng) : null)
+	);
+	const pin = $derived(
+		venue.lat !== null && venue.lng !== null
+			? { lat: venue.lat, lng: venue.lng }
+			: parseMapsPin(venue.contact.google_maps ?? '')
 	);
 </script>
 
@@ -70,6 +76,36 @@
 		</p>
 	</div>
 </div>
+
+{#if (venue.images ?? []).length > 0}
+	<section class="mb-8">
+		<div class="grid gap-2 {(venue.images ?? []).length === 1 ? '' : 'sm:grid-cols-2 lg:grid-cols-3'}">
+			{#each venue.images ?? [] as image, index (image.id)}
+				<img
+					src={image.url}
+					alt="{venue.name} photo {index + 1}"
+					class="h-56 w-full border border-line object-cover {index === 0 && venue.images.length !== 1
+						? 'sm:col-span-2 lg:col-span-2 lg:h-72'
+						: ''}"
+				/>
+			{/each}
+		</div>
+	</section>
+{/if}
+
+{#if pin}
+	<section class="mb-8">
+		<div class="mb-3 flex items-end justify-between gap-4">
+			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Map</h3>
+			{#if maps}
+				<a href={maps} class="text-xs underline decoration-line underline-offset-4 hover:text-ink" target="_blank" rel="noreferrer">
+					Open in Google Maps
+				</a>
+			{/if}
+		</div>
+		<MapEmbed {venue} />
+	</section>
+{/if}
 
 {#if venue.alerts.length > 0}
 	<section class="mb-8 space-y-2">
@@ -241,15 +277,6 @@
 					</li>
 				{/if}
 			</ul>
-			{#if venue.lat !== null && venue.lng !== null}
-				<iframe
-					title="Map pin"
-					class="mt-4 h-48 w-full border border-line"
-					src={mapsEmbedUrl(venue.lat, venue.lng)}
-					loading="lazy"
-					referrerpolicy="no-referrer-when-downgrade"
-				></iframe>
-			{/if}
 		</section>
 	</aside>
 </div>

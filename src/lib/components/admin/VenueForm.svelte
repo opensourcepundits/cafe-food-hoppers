@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { enhance } from '$app/forms';
 	import Field from '$lib/components/admin/Field.svelte';
+	import Dialog from '$lib/components/admin/Dialog.svelte';
+	import BusyOverlay from '$lib/components/BusyOverlay.svelte';
 	import {
 		DISTRICTS,
 		datetimeLocalToIso,
 		emptyOpeningHours,
 		isoToDatetimeLocal,
 		mapsEmbedUrl,
-		mapsPinForVenue,
 		normalizeDayHours,
 		normalizeOpeningHours,
 		orderedWeekdays,
@@ -22,6 +24,7 @@
 		type OpeningHours,
 		type Special,
 		type Venue,
+		type VenueImage,
 		type Weekday
 	} from '$lib/venue';
 
@@ -45,7 +48,7 @@
 		name: venue?.name ?? '',
 		slug: venue?.slug ?? '',
 		district: venue?.district ?? DISTRICTS[0],
-		googleMaps: venue ? mapsPinForVenue(venue) : '',
+		googleMaps: venue?.contact.google_maps ?? '',
 		isFeatured: venue?.isFeatured ?? false,
 		featuredPriority: String(venue?.featuredPriority ?? 0),
 		wifi: venue?.workInfo.wifi ?? true,
@@ -62,13 +65,18 @@
 		email: venue?.contact.email ?? '',
 		menu: toMenu(venue?.menu),
 		specials: toSpecials(venue?.specials),
-		announcements: toAnnouncements(venue?.announcements)
+		announcements: toAnnouncements(venue?.announcements),
+		images: venue?.images ?? []
 	}));
 
 	const field =
 		'w-full border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink disabled:opacity-50';
+	const fieldCompact =
+		'h-8 w-[6.75rem] border border-line bg-paper px-1.5 text-xs outline-none focus:border-ink disabled:opacity-50';
 	const btnGhost =
 		'border border-line bg-paper px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted hover:border-ink hover:text-ink';
+	const btnGhostSm =
+		'border border-line bg-paper px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-muted hover:border-ink hover:text-ink';
 
 	let slugTouched = $state(seed.slugTouched);
 	let name = $state(seed.name);
@@ -92,14 +100,24 @@
 	let menu = $state<DraftCategory[]>(seed.menu);
 	let specials = $state<DraftSpecial[]>(seed.specials);
 	let announcements = $state<DraftAnnouncement[]>(seed.announcements);
+	let images = $state<VenueImage[]>(seed.images);
+	let photoFiles = $state<File[]>([]);
+	let fileInput = $state<HTMLInputElement | undefined>();
+	let confirmSave = $state(false);
+	let allowSubmit = $state(false);
+	let saving = $state(false);
+	let hideToast = $state(false);
+	let formEl = $state<HTMLFormElement | undefined>();
+
+	const photoSlots = $derived(images.length + photoFiles.length);
 
 	const payload = $derived(
 		JSON.stringify({
 			name,
 			slug: slugTouched ? slug : slugify(name),
 			district,
-			lat: googleMaps.trim() ? (parseMapsPin(googleMaps)?.lat ?? venue?.lat ?? null) : null,
-			lng: googleMaps.trim() ? (parseMapsPin(googleMaps)?.lng ?? venue?.lng ?? null) : null,
+			lat: parseMapsPin(googleMaps)?.lat ?? venue?.lat ?? null,
+			lng: parseMapsPin(googleMaps)?.lng ?? venue?.lng ?? null,
 			isFeatured,
 			featuredPriority: Number(featuredPriority) || 0,
 			workInfo: {
@@ -136,7 +154,8 @@
 				body: item.body,
 				starts_at: datetimeLocalToIso(item.startsLocal) ?? item.starts_at,
 				ends_at: datetimeLocalToIso(item.endsLocal)
-			}))
+			})),
+			images
 		})
 	);
 
@@ -232,7 +251,12 @@
 		];
 	}
 
-	const pin = $derived(parseMapsPin(googleMaps));
+	const pin = $derived(
+		parseMapsPin(googleMaps) ??
+			(venue?.lat !== null && venue?.lat !== undefined && venue?.lng !== null && venue?.lng !== undefined
+				? { lat: venue.lat, lng: venue.lng }
+				: null)
+	);
 
 	function dayHours(day: Weekday): DayHours {
 		return normalizeDayHours(hours[day]);
@@ -279,6 +303,25 @@
 		setDayHours(day, { ...current, spans });
 	}
 
+	function addPhotos(list: FileList | null) {
+		if (!list) return;
+		const room = Math.max(0, 5 - photoSlots);
+		photoFiles = [...photoFiles, ...Array.from(list).slice(0, room)];
+		if (fileInput) fileInput.value = '';
+	}
+
+	function removeKept(id: string) {
+		images = images.filter((image) => image.id !== id);
+	}
+
+	function removeFile(index: number) {
+		photoFiles = photoFiles.filter((_, fileIndex) => fileIndex !== index);
+	}
+
+	function previewUrl(file: File): string {
+		return URL.createObjectURL(file);
+	}
+
 	function tagsValue(item: DraftItem): string {
 		return item.tags?.join(', ') ?? '';
 	}
@@ -308,11 +351,53 @@
 {#if error}
 	<p class="mb-6 border border-accent bg-paper px-4 py-3 text-sm text-accent">{error}</p>
 {/if}
-{#if saved}
-	<p class="mb-6 border border-open px-4 py-3 text-sm text-open">Saved.</p>
+
+{#if saved && !hideToast}
+	<div class="fixed right-4 bottom-4 z-30 border border-open bg-paper px-4 py-3 text-sm text-open shadow-[4px_4px_0_0_var(--color-ink)]">
+		Place saved.
+		<button type="button" class="ml-3 text-muted hover:text-ink" onclick={() => (hideToast = true)}>Close</button>
+	</div>
 {/if}
 
-<form method="POST" action="?/save" class="space-y-10">
+<BusyOverlay show={saving} label="Saving place…" />
+
+<Dialog
+	open={confirmSave}
+	title="Save place"
+	body="Save these changes to the directory?"
+	confirmLabel="Save"
+	busy={saving}
+	oncancel={() => (confirmSave = false)}
+	onconfirm={() => {
+		allowSubmit = true;
+		confirmSave = false;
+		saving = true;
+		formEl?.requestSubmit();
+	}}
+/>
+
+<form
+	bind:this={formEl}
+	method="POST"
+	action="?/save"
+	enctype="multipart/form-data"
+	class="space-y-10"
+	onsubmit={(event) => {
+		if (!allowSubmit) {
+			event.preventDefault();
+			confirmSave = true;
+		}
+	}}
+	use:enhance={({ formData }) => {
+		for (const file of photoFiles) formData.append('photos', file);
+		saving = true;
+		return async ({ update }) => {
+			await update();
+			saving = false;
+			allowSubmit = false;
+		};
+	}}
+>
 	<input type="hidden" name="payload" value={payload} />
 
 	<section>
@@ -429,50 +514,88 @@
 		<p class="mt-2 text-xs text-muted">
 			Add hours for a second sitting, for example 09:00–14:00 then 18:00–21:00.
 		</p>
-		<ul class="mt-4 divide-y divide-line border-y border-line">
+		<ul class="mt-3 w-fit max-w-full divide-y divide-line border-y border-line">
 			{#each orderedWeekdays() as day (day)}
 				{@const slot = dayHours(day)}
-				<li class="grid gap-3 py-3 text-sm sm:grid-cols-[4.5rem_1fr]">
-					<span class="pt-2">{weekdayLabel(day)}</span>
-					<div>
-						<label class="flex items-center gap-2 text-muted">
+				<li class="flex flex-wrap items-center gap-x-2 gap-y-1 py-1.5 pr-2 text-xs">
+					<span class="w-8 shrink-0 font-medium">{weekdayLabel(day)}</span>
+					<label class="flex items-center gap-1 text-muted">
+						<input
+							class="size-3.5"
+							type="checkbox"
+							checked={slot.closed ?? false}
+							onchange={(event) => setClosed(day, event.currentTarget.checked)}
+						/>
+						Closed
+					</label>
+					{#if !slot.closed}
+						{#each slot.spans ?? [] as span, index (index)}
 							<input
-								type="checkbox"
-								checked={slot.closed ?? false}
-								onchange={(event) => setClosed(day, event.currentTarget.checked)}
+								class={fieldCompact}
+								type="time"
+								value={span.open}
+								onchange={(event) => setSpan(day, index, { open: event.currentTarget.value })}
 							/>
-							Closed
-						</label>
-						{#if !slot.closed}
-							<ul class="mt-2 space-y-2">
-								{#each slot.spans ?? [] as span, index (index)}
-									<li class="flex flex-wrap items-center gap-2">
-										<input
-											class="{field} w-[8.5rem]"
-											type="time"
-											value={span.open}
-											onchange={(event) => setSpan(day, index, { open: event.currentTarget.value })}
-										/>
-										<span class="text-muted">to</span>
-										<input
-											class="{field} w-[8.5rem]"
-											type="time"
-											value={span.close}
-											onchange={(event) => setSpan(day, index, { close: event.currentTarget.value })}
-										/>
-										{#if (slot.spans?.length ?? 0) > 1}
-											<button type="button" class={btnGhost} onclick={() => removeSpan(day, index)}
-												>Remove</button
-											>
-										{/if}
-									</li>
-								{/each}
-							</ul>
-							<button type="button" class="{btnGhost} mt-2" onclick={() => addSpan(day)}>Add hours</button>
-						{/if}
-					</div>
+							<span class="text-muted">–</span>
+							<input
+								class={fieldCompact}
+								type="time"
+								value={span.close}
+								onchange={(event) => setSpan(day, index, { close: event.currentTarget.value })}
+							/>
+							{#if (slot.spans?.length ?? 0) > 1}
+								<button type="button" class={btnGhostSm} onclick={() => removeSpan(day, index)}>×</button>
+							{/if}
+						{/each}
+						<button type="button" class={btnGhostSm} onclick={() => addSpan(day)}>+ hours</button>
+					{/if}
 				</li>
 			{/each}
+		</ul>
+	</section>
+
+	<section>
+		<div class="flex items-end justify-between gap-4">
+			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Photos</h3>
+			<span class="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">{photoSlots} / 5</span>
+		</div>
+		<p class="mt-2 text-xs text-muted">JPEG, PNG, WebP, or GIF. Max 5 images, 4 MB each. Stored in the venue-images bucket.</p>
+		<ul class="mt-4 flex flex-wrap gap-3">
+			{#each images as image (image.id)}
+				<li class="relative size-24 border border-line">
+					<img src={image.url} alt="" class="size-full object-cover" />
+					<button
+						type="button"
+						class="absolute top-1 right-1 border border-ink bg-paper px-1 text-[10px]"
+						onclick={() => removeKept(image.id)}>×</button
+					>
+				</li>
+			{/each}
+			{#each photoFiles as file, index (file.name + index)}
+				<li class="relative size-24 border border-line">
+					<img src={previewUrl(file)} alt="" class="size-full object-cover" />
+					<button
+						type="button"
+						class="absolute top-1 right-1 border border-ink bg-paper px-1 text-[10px]"
+						onclick={() => removeFile(index)}>×</button
+					>
+				</li>
+			{/each}
+			{#if photoSlots < 5}
+				<li>
+					<label class="flex size-24 cursor-pointer items-center justify-center border border-dashed border-line text-xs text-muted hover:border-ink hover:text-ink">
+						Add
+						<input
+							bind:this={fileInput}
+							class="sr-only"
+							type="file"
+							accept="image/jpeg,image/png,image/webp,image/gif"
+							multiple
+							onchange={(event) => addPhotos(event.currentTarget.files)}
+						/>
+					</label>
+				</li>
+			{/if}
 		</ul>
 	</section>
 

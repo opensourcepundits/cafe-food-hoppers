@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ url }) => {
 				return hay.includes(q.toLowerCase());
 			})
 		: venues;
-	return { venues: filtered, q, total: venues.length };
+	return { venues: filtered, q, total: venues.length, deleted: url.searchParams.get('deleted') === '1' };
 };
 
 export const actions: Actions = {

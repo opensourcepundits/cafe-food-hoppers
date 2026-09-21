@@ -18,6 +18,7 @@ import {
 	type Special,
 	type SpecialFeedItem,
 	type Venue,
+	type VenueImage,
 	type VenueFilters,
 	type WorkInfo
 } from '$lib/venue';
@@ -31,6 +32,11 @@ function asArray<T>(value: unknown): T[] {
 }
 
 export function mapVenue(row: VenueRow): Venue {
+	const contact = asObject<Contact>(row.contact, {});
+	const storedImages = asArray<VenueImage>(
+		'images' in contact ? (contact as Contact & { images?: VenueImage[] }).images : []
+	);
+	const { images: _ignored, ...publicContact } = contact as Contact & { images?: VenueImage[] };
 	return {
 		id: row.id,
 		name: row.name,
@@ -45,7 +51,8 @@ export function mapVenue(row: VenueRow): Venue {
 		announcements: asArray<Announcement>(row.announcements),
 		specials: asArray<Special>(row.specials),
 		menu: asArray<MenuCategory>(row.menu),
-		contact: asObject<Contact>(row.contact, {}),
+		contact: publicContact,
+		images: storedImages.filter((image) => Boolean(image?.url)),
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt
 	};
@@ -158,21 +165,27 @@ export async function getVenueById(id: string): Promise<Venue | null> {
 	return row ? mapVenue(row) : null;
 }
 
+function persist(input: VenueWrite, slug: string) {
+	const { images, ...rest } = input;
+	return {
+		...rest,
+		slug,
+		contact: { ...input.contact, images }
+	};
+}
+
 export async function createVenue(input: VenueWrite): Promise<Venue> {
 	const slug = await uniqueSlug(input.slug);
-		const [row] = await db
-			.insert(venues)
-			.values({ ...input, slug })
-			.returning();
-		if (!row) throw new Error('Insert failed');
-		return mapVenue(row);
+	const [row] = await db.insert(venues).values(persist(input, slug)).returning();
+	if (!row) throw new Error('Insert failed');
+	return mapVenue(row);
 }
 
 export async function updateVenue(id: string, input: VenueWrite): Promise<Venue | null> {
 	const slug = await uniqueSlug(input.slug, id);
 	const [row] = await db
 		.update(venues)
-		.set({ ...input, slug, updatedAt: new Date() })
+		.set({ ...persist(input, slug), updatedAt: new Date() })
 		.where(eq(venues.id, id))
 		.returning();
 	return row ? mapVenue(row) : null;
@@ -184,11 +197,20 @@ export async function deleteVenue(id: string): Promise<boolean> {
 }
 
 async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
+	if (excludeId) {
+		const [current] = await db
+			.select({ id: venues.id, slug: venues.slug })
+			.from(venues)
+			.where(eq(venues.id, excludeId))
+			.limit(1);
+		if (current && current.slug === base) return current.slug;
+	}
+
 	let candidate = base;
 	let n = 2;
 	while (n < 50) {
 		const [row] = await db.select({ id: venues.id }).from(venues).where(eq(venues.slug, candidate)).limit(1);
-		if (!row || row.id === excludeId) return candidate;
+		if (!row || String(row.id) === String(excludeId)) return candidate;
 		candidate = `${base.slice(0, 70)}-${n}`;
 		n += 1;
 	}

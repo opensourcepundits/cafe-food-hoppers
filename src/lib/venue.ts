@@ -95,6 +95,12 @@ export type Contact = {
 	google_maps?: string;
 };
 
+export type VenueImage = {
+	id: string;
+	url: string;
+	path: string;
+};
+
 export type Venue = {
 	id: string;
 	name: string;
@@ -110,6 +116,7 @@ export type Venue = {
 	specials: Special[];
 	menu: MenuCategory[];
 	contact: Contact;
+	images: VenueImage[];
 	createdAt: Date | null;
 	updatedAt: Date | null;
 };

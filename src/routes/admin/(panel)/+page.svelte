@@ -1,11 +1,19 @@
 <script lang="ts">
 	let { data } = $props();
+	let hideToast = $state(false);
 </script>
 
 <svelte:head>
 	<title>Admin — Place</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
+
+{#if data.deleted && !hideToast}
+	<div class="fixed right-4 bottom-4 z-30 border border-ink bg-paper px-4 py-3 text-sm shadow-[4px_4px_0_0_var(--color-ink)]">
+		Place deleted.
+		<button type="button" class="ml-3 text-muted hover:text-ink" onclick={() => (hideToast = true)}>Close</button>
+	</div>
+{/if}
 
 <form method="GET" class="mb-6 flex gap-3">
 	<input

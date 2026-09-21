@@ -29,9 +29,15 @@ export type WorkInfo = {
 	notes?: string;
 };
 
-export type DayHours = {
+export type HourSpan = {
 	open: string;
 	close: string;
+};
+
+export type DayHours = {
+	open?: string;
+	close?: string;
+	spans?: HourSpan[];
 	closed?: boolean;
 };
 
@@ -148,6 +154,41 @@ export function mapsUrl(lat: number, lng: number): string {
 	return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 }
 
+export function mapsEmbedUrl(lat: number, lng: number): string {
+	return `https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed`;
+}
+
+export function parseMapsPin(value: string): { lat: number; lng: number } | null {
+	const text = value.trim();
+	if (!text) return null;
+
+	const bang = text.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+	if (bang) return toCoords(bang[1], bang[2]);
+
+	const at = text.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+	if (at) return toCoords(at[1], at[2]);
+
+	const query = text.match(/[?&](?:q|query|ll|destination)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/i);
+	if (query) return toCoords(query[1], query[2]);
+
+	const raw = text.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+	if (raw) return toCoords(raw[1], raw[2]);
+
+	return null;
+}
+
+function toCoords(latText: string, lngText: string): { lat: number; lng: number } | null {
+	const lat = Number(latText);
+	const lng = Number(lngText);
+	if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+	if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+	return { lat, lng };
+}
+
+export function mapsPinForVenue(venue: Pick<Venue, 'lat' | 'lng' | 'contact'>): string {
+	return venue.contact.google_maps?.trim() || (venue.lat !== null && venue.lng !== null ? mapsUrl(venue.lat, venue.lng) : '');
+}
+
 type Clock = {
 	weekday: Weekday;
 	minutes: number;
@@ -182,10 +223,37 @@ function previousWeekday(day: Weekday): Weekday {
 	return WEEKDAYS[(index + 6) % 7];
 }
 
-function isWithinHours(day: DayHours | undefined, minutes: number, overnightOnly = false): boolean {
-	if (!day || day.closed) return false;
-	const open = parseMinutes(day.open);
-	const close = parseMinutes(day.close);
+export function daySpans(day: DayHours | undefined): HourSpan[] {
+	if (!day || day.closed) return [];
+	const spans = (day.spans ?? []).filter((span) => Boolean(span.open && span.close));
+	if (spans.length) return spans;
+	if (day.open && day.close) return [{ open: day.open, close: day.close }];
+	return [];
+}
+
+export function normalizeDayHours(day: DayHours | undefined): DayHours {
+	const closed = Boolean(day?.closed);
+	const spans = daySpans(closed ? { ...day, closed: false } : day);
+	const next = spans.length ? spans : [{ open: '08:00', close: '17:00' }];
+	return {
+		closed,
+		open: next[0].open,
+		close: next[0].close,
+		spans: next
+	};
+}
+
+export function normalizeOpeningHours(hours: OpeningHours | undefined): OpeningHours {
+	const next: OpeningHours = { timezone: hours?.timezone || MAURITIUS_TZ };
+	for (const day of orderedWeekdays()) {
+		next[day] = normalizeDayHours(hours?.[day]);
+	}
+	return next;
+}
+
+function spanContains(span: HourSpan, minutes: number, overnightOnly = false): boolean {
+	const open = parseMinutes(span.open);
+	const close = parseMinutes(span.close);
 	if (close > open) {
 		if (overnightOnly) return false;
 		return minutes >= open && minutes < close;
@@ -194,17 +262,26 @@ function isWithinHours(day: DayHours | undefined, minutes: number, overnightOnly
 	return overnightOnly ? minutes < close : minutes >= open || minutes < close;
 }
 
+function isWithinHours(day: DayHours | undefined, minutes: number, overnightOnly = false): boolean {
+	return daySpans(day).some((span) => spanContains(span, minutes, overnightOnly));
+}
+
 export function isOpenNow(hours: OpeningHours, at = new Date()): boolean {
 	const clock = mauritiusClock(at);
 	if (isWithinHours(hours[clock.weekday], clock.minutes)) return true;
 	return isWithinHours(hours[previousWeekday(clock.weekday)], clock.minutes, true);
 }
 
+export function dayHoursLabel(day: DayHours | undefined, closedText = 'Closed'): string {
+	if (!day || day.closed) return closedText;
+	const spans = daySpans(day);
+	if (!spans.length) return closedText;
+	return spans.map((span) => `${span.open}–${span.close}`).join(', ');
+}
+
 export function hoursLabel(hours: OpeningHours, at = new Date()): string {
 	const clock = mauritiusClock(at);
-	const today = hours[clock.weekday];
-	if (!today || today.closed) return 'Closed today';
-	return `${today.open}–${today.close}`;
+	return dayHoursLabel(hours[clock.weekday], 'Closed today');
 }
 
 export function weekdayLabel(day: Weekday): string {
@@ -227,11 +304,7 @@ export function slugify(name: string): string {
 }
 
 export function emptyOpeningHours(): OpeningHours {
-	const hours: OpeningHours = { timezone: MAURITIUS_TZ };
-	for (const day of orderedWeekdays()) {
-		hours[day] = { open: '08:00', close: '17:00', closed: false };
-	}
-	return hours;
+	return normalizeOpeningHours({ timezone: MAURITIUS_TZ });
 }
 
 export function isoToDatetimeLocal(iso: string | null | undefined): string {
@@ -309,11 +382,12 @@ export function isWorkFriendly(info: WorkInfo): boolean {
 }
 
 export function isDayLate(day: DayHours | undefined): boolean {
-	if (!day || day.closed) return false;
-	const open = parseMinutes(day.open);
-	const close = parseMinutes(day.close);
-	if (close <= open) return true;
-	return close >= LATE_CLOSE_MINUTES;
+	return daySpans(day).some((span) => {
+		const open = parseMinutes(span.open);
+		const close = parseMinutes(span.close);
+		if (close <= open) return true;
+		return close >= LATE_CLOSE_MINUTES;
+	});
 }
 
 export function isOpenTillLate(hours: OpeningHours): boolean {

@@ -8,7 +8,7 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
-	default: async ({ request }) => {
+	save: async ({ request }) => {
 		const parsed = payloadFromForm(await request.formData());
 		if (!parsed.ok) return fail(400, { error: parsed.error });
 		try {

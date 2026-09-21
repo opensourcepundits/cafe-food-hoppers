@@ -155,9 +155,13 @@ export async function getVenueBySlug(slug: string): Promise<LiveVenue | null> {
 	return row ? withLiveState(mapVenue(row)) : null;
 }
 
-export async function listVenuesAdmin(): Promise<Venue[]> {
+export async function listVenuesAdmin(user?: { role: string; venueId: string | null } | null): Promise<Venue[]> {
 	const rows = await db.select().from(venues).orderBy(venues.name);
-	return rows.map(mapVenue);
+	const mapped = rows.map(mapVenue);
+	if (user?.role === 'editor') {
+		return mapped.filter((venue) => venue.id === user.venueId);
+	}
+	return mapped;
 }
 
 export async function getVenueById(id: string): Promise<Venue | null> {

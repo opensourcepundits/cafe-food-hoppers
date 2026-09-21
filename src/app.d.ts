@@ -5,7 +5,14 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			admin: boolean;
-			user: { id: string; email: string; phone: string } | null;
+			user: {
+				id: string;
+				email: string;
+				phone: string | null;
+				role: 'admin' | 'editor';
+				venueId: string | null;
+				emails: string[];
+			} | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

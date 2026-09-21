@@ -25,45 +25,44 @@
 
 <VenueForm venue={data.venue} error={form?.error} saved={data.saved && !form?.error} />
 
-<BusyOverlay show={deleting} label="Deleting place…" />
+{#if data.canDelete}
+	<BusyOverlay show={deleting} label="Deleting place…" />
 
-<Dialog
-	open={confirmDelete}
-	title="Delete place"
-	body={`Delete ${data.venue.name}? This cannot be undone.`}
-	confirmLabel="Delete"
-	danger
-	busy={deleting}
-	oncancel={() => (confirmDelete = false)}
-	onconfirm={() => {
-		allowDelete = true;
-		confirmDelete = false;
-		deleting = true;
-		deleteForm?.requestSubmit();
-	}}
-/>
+	<Dialog
+		open={confirmDelete}
+		title="Delete place"
+		body={`Delete ${data.venue.name}? This cannot be undone.`}
+		confirmLabel="Delete"
+		danger
+		oncancel={() => (confirmDelete = false)}
+		onconfirm={() => {
+			allowDelete = true;
+			confirmDelete = false;
+			deleteForm?.requestSubmit();
+		}}
+	/>
 
-<form
-	bind:this={deleteForm}
-	method="POST"
-	action="?/delete"
-	class="mt-8 border-t border-line pt-6"
-	onsubmit={(event) => {
-		if (!allowDelete) {
-			event.preventDefault();
-			confirmDelete = true;
-		}
-	}}
-	use:enhance={() => {
-		deleting = true;
-		return async ({ update }) => {
-			await update();
-			deleting = false;
-			allowDelete = false;
-		};
-	}}
->
-	<button type="submit" class="font-mono text-[11px] uppercase tracking-[0.16em] text-accent hover:underline">
-		Delete this place
-	</button>
-</form>
+	<form
+		bind:this={deleteForm}
+		method="POST"
+		action="?/delete"
+		class="mt-8 border-t border-line pt-6"
+		use:enhance={({ cancel }) => {
+			if (!allowDelete) {
+				cancel();
+				confirmDelete = true;
+				return;
+			}
+			deleting = true;
+			return async ({ update }) => {
+				await update();
+				deleting = false;
+				allowDelete = false;
+			};
+		}}
+	>
+		<button type="submit" class="font-mono text-[11px] uppercase tracking-[0.16em] text-accent hover:underline">
+			Delete this place
+		</button>
+	</form>
+{/if}

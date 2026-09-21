@@ -2,16 +2,19 @@ import { error, fail, isHttpError, isRedirect, redirect } from '@sveltejs/kit';
 import { deleteVenue, getVenueById, updateVenue } from '$lib/server/venues';
 import { isUniqueViolation, payloadFromForm } from '$lib/server/venue-input';
 import { filesFromForm, persistVenueImages, removeImagePaths } from '$lib/server/storage';
+import { isOwner, requireVenueEditor } from '$lib/server/access';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, url }) => {
+export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const venue = await getVenueById(params.id);
 	if (!venue) error(404, 'Place not found.');
-	return { venue, saved: url.searchParams.get('saved') === '1' };
+	requireVenueEditor(locals.user, venue.id);
+	return { venue, saved: url.searchParams.get('saved') === '1', canDelete: isOwner(locals.user) };
 };
 
 export const actions: Actions = {
-	save: async ({ request, params }) => {
+	save: async ({ request, params, locals }) => {
+		requireVenueEditor(locals.user, params.id);
 		const data = await request.formData();
 		const parsed = payloadFromForm(data);
 		if (!parsed.ok) return fail(400, { error: parsed.error });
@@ -21,7 +24,8 @@ export const actions: Actions = {
 			const images = await persistVenueImages(
 				parsed.value.images,
 				filesFromForm(data),
-				current.images
+				current.images,
+				parsed.value.slug || current.slug
 			);
 			const venue = await updateVenue(params.id, { ...parsed.value, images });
 			if (!venue) error(404, 'Place not found.');
@@ -34,7 +38,9 @@ export const actions: Actions = {
 			return fail(500, { error: message });
 		}
 	},
-	delete: async ({ params }) => {
+	delete: async ({ params, locals }) => {
+		requireVenueEditor(locals.user, params.id);
+		if (!isOwner(locals.user)) error(403, 'Only site admins can delete a place.');
 		const venue = await getVenueById(params.id);
 		if (venue) await removeImagePaths(venue.images.map((image) => image.path));
 		await deleteVenue(params.id);

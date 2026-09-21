@@ -3,9 +3,9 @@ import { listVenuesAdmin } from '$lib/server/venues';
 import { clearAdminSession } from '$lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
 	const q = url.searchParams.get('q')?.trim() ?? '';
-	const venues = await listVenuesAdmin();
+	const venues = await listVenuesAdmin(locals.user);
 	const filtered = q
 		? venues.filter((venue) => {
 				const hay = `${venue.name} ${venue.district} ${venue.slug}`.toLowerCase();

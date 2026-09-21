@@ -46,6 +46,15 @@ function extFor(file: File): string {
 	return 'jpg';
 }
 
+function folderFromSlug(slug: string): string {
+	const folder = slug
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9-]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return folder || 'venue';
+}
+
 export function parseKeptImages(value: unknown): VenueImage[] {
 	if (!Array.isArray(value)) return [];
 	const next: VenueImage[] = [];
@@ -68,7 +77,8 @@ export function parseKeptImages(value: unknown): VenueImage[] {
 export async function persistVenueImages(
 	kept: VenueImage[],
 	files: File[],
-	previous: VenueImage[] = []
+	previous: VenueImage[] = [],
+	slug = 'venue'
 ): Promise<VenueImage[]> {
 	const keptPaths = new Set(kept.map((image) => image.path).filter(Boolean));
 	const removed = previous.filter((image) => image.path && !keptPaths.has(image.path));
@@ -80,6 +90,7 @@ export async function persistVenueImages(
 	const client = supabase();
 	const room = Math.max(0, MAX_VENUE_IMAGES - kept.length);
 	const uploaded: VenueImage[] = [];
+	const folder = folderFromSlug(slug);
 
 	for (const file of files.slice(0, room)) {
 		if (!file.size) continue;
@@ -90,7 +101,7 @@ export async function persistVenueImages(
 			throw new Error(`${file.name} must be a JPEG, PNG, WebP, or GIF.`);
 		}
 		const id = crypto.randomUUID();
-		const path = `${id}.${extFor(file)}`;
+		const path = `${folder}/${id}.${extFor(file)}`;
 		const { error } = await client.storage.from(IMAGE_BUCKET).upload(path, file, {
 			contentType: file.type || 'image/jpeg',
 			upsert: false

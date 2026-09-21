@@ -34,7 +34,11 @@
 
 {#if data.venues.length === 0}
 	<div class="border border-dashed border-line px-4 py-12 text-center text-sm text-muted">
-		No places yet. <a href="/admin/venues/new" class="underline decoration-line underline-offset-4">Add one</a>.
+		{#if data.isOwner}
+			No places yet. <a href="/admin/venues/new" class="underline decoration-line underline-offset-4">Add one</a>.
+		{:else}
+			No place is assigned to this account yet.
+		{/if}
 	</div>
 {:else}
 	<div class="overflow-x-auto border border-line">

@@ -11,6 +11,7 @@
 	import Wifi from '@lucide/svelte/icons/wifi';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import MapEmbed from '$lib/components/MapEmbed.svelte';
+	import ImageCarousel from '$lib/components/ImageCarousel.svelte';
 	import {
 		dayHoursLabel,
 		formatSpecialWhen,
@@ -79,17 +80,7 @@
 
 {#if (venue.images ?? []).length > 0}
 	<section class="mb-8">
-		<div class="grid gap-2 {(venue.images ?? []).length === 1 ? '' : 'sm:grid-cols-2 lg:grid-cols-3'}">
-			{#each venue.images ?? [] as image, index (image.id)}
-				<img
-					src={image.url}
-					alt="{venue.name} photo {index + 1}"
-					class="h-56 w-full border border-line object-cover {index === 0 && venue.images.length !== 1
-						? 'sm:col-span-2 lg:col-span-2 lg:h-72'
-						: ''}"
-				/>
-			{/each}
-		</div>
+		<ImageCarousel images={venue.images} alt={venue.name} />
 	</section>
 {/if}
 

@@ -4,6 +4,7 @@
 	import Field from '$lib/components/admin/Field.svelte';
 	import Dialog from '$lib/components/admin/Dialog.svelte';
 	import BusyOverlay from '$lib/components/BusyOverlay.svelte';
+	import ImageCarousel from '$lib/components/ImageCarousel.svelte';
 	import {
 		DISTRICTS,
 		datetimeLocalToIso,
@@ -110,6 +111,14 @@
 	let formEl = $state<HTMLFormElement | undefined>();
 
 	const photoSlots = $derived(images.length + photoFiles.length);
+	const gallery = $derived<VenueImage[]>([
+		...images,
+		...photoFiles.map((file, index) => ({
+			id: `draft-${index}`,
+			url: previewUrl(file),
+			path: ''
+		}))
+	]);
 
 	const payload = $derived(
 		JSON.stringify({
@@ -318,6 +327,14 @@
 		photoFiles = photoFiles.filter((_, fileIndex) => fileIndex !== index);
 	}
 
+	function removeGallery(id: string) {
+		if (id.startsWith('draft-')) {
+			removeFile(Number(id.slice('draft-'.length)));
+			return;
+		}
+		removeKept(id);
+	}
+
 	function previewUrl(file: File): string {
 		return URL.createObjectURL(file);
 	}
@@ -366,12 +383,10 @@
 	title="Save place"
 	body="Save these changes to the directory?"
 	confirmLabel="Save"
-	busy={saving}
 	oncancel={() => (confirmSave = false)}
 	onconfirm={() => {
 		allowSubmit = true;
 		confirmSave = false;
-		saving = true;
 		formEl?.requestSubmit();
 	}}
 />
@@ -382,13 +397,12 @@
 	action="?/save"
 	enctype="multipart/form-data"
 	class="space-y-10"
-	onsubmit={(event) => {
+	use:enhance={({ formData, cancel }) => {
 		if (!allowSubmit) {
-			event.preventDefault();
+			cancel();
 			confirmSave = true;
+			return;
 		}
-	}}
-	use:enhance={({ formData }) => {
 		for (const file of photoFiles) formData.append('photos', file);
 		saving = true;
 		return async ({ update }) => {
@@ -559,44 +573,23 @@
 			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Photos</h3>
 			<span class="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">{photoSlots} / 5</span>
 		</div>
-		<p class="mt-2 text-xs text-muted">JPEG, PNG, WebP, or GIF. Max 5 images, 4 MB each. Stored in the venue-images bucket.</p>
-		<ul class="mt-4 flex flex-wrap gap-3">
-			{#each images as image (image.id)}
-				<li class="relative size-24 border border-line">
-					<img src={image.url} alt="" class="size-full object-cover" />
-					<button
-						type="button"
-						class="absolute top-1 right-1 border border-ink bg-paper px-1 text-[10px]"
-						onclick={() => removeKept(image.id)}>×</button
-					>
-				</li>
-			{/each}
-			{#each photoFiles as file, index (file.name + index)}
-				<li class="relative size-24 border border-line">
-					<img src={previewUrl(file)} alt="" class="size-full object-cover" />
-					<button
-						type="button"
-						class="absolute top-1 right-1 border border-ink bg-paper px-1 text-[10px]"
-						onclick={() => removeFile(index)}>×</button
-					>
-				</li>
-			{/each}
-			{#if photoSlots < 5}
-				<li>
-					<label class="flex size-24 cursor-pointer items-center justify-center border border-dashed border-line text-xs text-muted hover:border-ink hover:text-ink">
-						Add
-						<input
-							bind:this={fileInput}
-							class="sr-only"
-							type="file"
-							accept="image/jpeg,image/png,image/webp,image/gif"
-							multiple
-							onchange={(event) => addPhotos(event.currentTarget.files)}
-						/>
-					</label>
-				</li>
-			{/if}
-		</ul>
+		<p class="mt-2 text-xs text-muted">JPEG, PNG, WebP, or GIF. Max 5 images, 4 MB each. Stored under the place slug in the venue-images bucket.</p>
+		<div class="mt-4 max-w-xl">
+			<ImageCarousel images={gallery} alt={name || 'Place'} onremove={removeGallery} />
+		</div>
+		{#if photoSlots < 5}
+			<label class="{btnGhost} mt-3 inline-flex cursor-pointer items-center">
+				Add photos
+				<input
+					bind:this={fileInput}
+					class="sr-only"
+					type="file"
+					accept="image/jpeg,image/png,image/webp,image/gif"
+					multiple
+					onchange={(event) => addPhotos(event.currentTarget.files)}
+				/>
+			</label>
+		{/if}
 	</section>
 
 	<section>

@@ -275,7 +275,7 @@
 	<p class="mb-6 border border-open px-4 py-3 text-sm text-open">Saved.</p>
 {/if}
 
-<form method="POST" class="space-y-10">
+<form method="POST" action="?/save" class="space-y-10">
 	<input type="hidden" name="payload" value={payload} />
 
 	<section>

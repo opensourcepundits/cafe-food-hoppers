@@ -12,8 +12,7 @@
 			outletLabel(venue.workInfo.outlet_access, venue.workInfo.outlets),
 			noiseLabel(venue.workInfo.noise_level),
 			venue.openLate ? 'Open till late' : null,
-			...amenityLabels(venue.workInfo),
-			...verificationLabels(venue)
+			...amenityLabels(venue.workInfo)
 		].filter((value): value is string => Boolean(value))
 	);
 
@@ -63,11 +62,14 @@
 			{#each workBits as bit (bit)}
 				<li
 					class="border border-line px-2 py-0.5 text-[11px] text-muted"
-					class:border-ink={bit === 'Work friendly' || bit === 'Open till late' || bit.endsWith('verified')}
-					class:text-ink={bit === 'Work friendly' || bit === 'Open till late' || bit.endsWith('verified')}
+					class:border-ink={bit === 'Work friendly' || bit === 'Open till late'}
+					class:text-ink={bit === 'Work friendly' || bit === 'Open till late'}
 				>
 					{bit}
 				</li>
+			{/each}
+			{#each verificationLabels(venue) as bit (bit)}
+				<li class="border border-open bg-open px-2 py-0.5 text-[11px] text-paper">{bit}</li>
 			{/each}
 		</ul>
 	</div>

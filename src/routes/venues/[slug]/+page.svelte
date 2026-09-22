@@ -66,7 +66,7 @@
 					</li>
 				{/each}
 				{#each verificationLabels(venue) as label (label)}
-					<li class="border border-ink px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em]">
+					<li class="border border-open bg-open px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-paper">
 						{label}
 					</li>
 				{/each}

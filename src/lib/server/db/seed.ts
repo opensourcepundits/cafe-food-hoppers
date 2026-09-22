@@ -562,6 +562,7 @@ async function seed() {
 			lighting: ['natural', 'warm'],
 			lighting_notes: 'Big windows on the street side. Warmer lamps after 16:00.',
 			toilet: 'One customer toilet downstairs. Ask at the bar for the code.',
+			cell_reception: 'my.t and Emtel hold indoors. Orange is usable near the windows.',
 			outlet_rating: 'abundant',
 			ergonomic_index: 'high',
 			ergonomic_notes: 'Upholstered chairs and a few counter stools. Laptop tables are the right height.'
@@ -569,6 +570,7 @@ async function seed() {
 		'the-workshop': {
 			lighting: ['bright', 'natural'],
 			toilet: 'Toilets on the coworking floor. No code.',
+			cell_reception: 'Full signal on all three networks. Calls stay clear in the back room.',
 			outlet_rating: 'abundant',
 			ergonomic_index: 'high',
 			ergonomic_notes: 'Task chairs at the standing desks. Cafe chairs are firmer.'
@@ -576,6 +578,7 @@ async function seed() {
 		'le-caudan-roastery': {
 			lighting: ['natural'],
 			toilet: 'Shared mall toilets, two minutes walk. None inside the roastery.',
+			cell_reception: 'Mall signal is fine. The roastery corner drops to one bar.',
 			outlet_rating: 'moderate',
 			ergonomic_index: 'moderate',
 			ergonomic_notes: 'Wooden chairs. Fine for an hour, less so for a full afternoon.'
@@ -583,6 +586,7 @@ async function seed() {
 		'tamarin-coffee-lab': {
 			lighting: ['warm', 'dim'],
 			toilet: 'Single toilet at the back. Customers only.',
+			cell_reception: 'Weak indoors. Step onto the pavement for a reliable call.',
 			outlet_rating: 'scarce',
 			ergonomic_index: 'low',
 			ergonomic_notes: 'Low stools and a window bench. Not built for long sitting.'
@@ -590,6 +594,7 @@ async function seed() {
 		'west-coast-espresso': {
 			lighting: ['natural', 'bright'],
 			toilet: 'No customer toilet.',
+			cell_reception: 'Open terrace, so reception matches the street. All networks work.',
 			outlet_rating: 'scarce',
 			ergonomic_index: 'low',
 			ergonomic_notes: 'Terrace stools. Short visits only.'
@@ -597,6 +602,7 @@ async function seed() {
 		'port-louis-grounds': {
 			lighting: ['bright'],
 			toilet: 'Two stalls inside. Step-free from the street.',
+			cell_reception: 'Solid Emtel and Orange. my.t fades at the rear tables.',
 			outlet_rating: 'abundant',
 			ergonomic_index: 'moderate',
 			ergonomic_notes: 'Padded banquettes along the wall. Tables are a bit low.'
@@ -604,6 +610,7 @@ async function seed() {
 		'moka-mill': {
 			lighting: ['natural', 'warm'],
 			toilet: 'Garden toilet, not accessible. Key at the counter.',
+			cell_reception: 'Patchy in the garden. The indoor room is steady on Emtel.',
 			outlet_rating: 'moderate',
 			ergonomic_index: 'moderate',
 			ergonomic_notes: 'Armchairs indoors. Garden benches have no back support.'
@@ -611,6 +618,7 @@ async function seed() {
 		'grand-baie-social': {
 			lighting: ['dim', 'warm'],
 			toilet: 'Toilets past the bar. Busy on Saturday nights.',
+			cell_reception: 'Crowded signal on weekend evenings. Voice calls cut out inside.',
 			outlet_rating: 'scarce',
 			ergonomic_index: 'low',
 			ergonomic_notes: 'Bar stools and lounge sofas. Neither is a work chair.'
@@ -618,6 +626,7 @@ async function seed() {
 		'ebene-desk': {
 			lighting: ['bright', 'natural'],
 			toilet: 'Toilets in the back room, included with cafe seating.',
+			cell_reception: 'Office-grade reception. All networks stay on a call at the desks.',
 			outlet_rating: 'abundant',
 			ergonomic_index: 'high',
 			ergonomic_notes: 'Office chairs in the back room. Cafe side is standard wooden chairs.'

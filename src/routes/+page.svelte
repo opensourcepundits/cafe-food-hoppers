@@ -1,15 +1,44 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Search from '@lucide/svelte/icons/search';
+	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+	import Dialog from '$lib/components/admin/Dialog.svelte';
 	import FilterChip from '$lib/components/FilterChip.svelte';
 	import VenueCard from '$lib/components/VenueCard.svelte';
 	import { ERGONOMIC_LEVELS, LIGHTING_TYPES, OUTLET_RATINGS, ergoLabel, lightingLabel, outletRatingLabel } from '$lib/venue';
 
 	let { data } = $props();
+	const activeFilters = $derived(
+		[
+			data.filters.workFriendly,
+			data.filters.notWorkFriendly,
+			data.filters.wifi,
+			data.filters.outlets,
+			data.filters.niceView,
+			data.filters.ocean,
+			data.filters.airConditioning,
+			data.filters.indoor,
+			data.filters.outdoor,
+			data.filters.openNow,
+			data.filters.late,
+			data.filters.ongoingSpecials,
+			data.filters.upcomingSpecials
+		].filter(Boolean).length +
+			data.filters.lighting.length +
+			data.filters.outletRatings.length +
+			data.filters.ergonomic.length
+	);
 	let locating = $state(false);
 	let locateError = $state('');
+	let confirmOpen = $state(false);
 
-	function emergencyZoom() {
+	function askEmergency() {
+		locateError = '';
+		confirmOpen = true;
+	}
+
+	function findEmergencyPlace() {
+		confirmOpen = false;
 		locateError = '';
 		if (!navigator.geolocation) {
 			locateError = 'This browser cannot share your location.';
@@ -58,18 +87,28 @@
 
 <button
 	type="button"
-	class="mb-4 w-full border border-ink bg-ink px-4 py-4 text-left text-paper disabled:opacity-60"
-	onclick={emergencyZoom}
+	class="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex size-14 items-center justify-center rounded-full border border-ink bg-accent text-paper shadow-[3px_3px_0_0_var(--color-ink)] disabled:opacity-60"
+	aria-label="Emergency meeting"
+	onclick={askEmergency}
 	disabled={locating}
 >
-	<span class="font-mono text-[11px] uppercase tracking-[0.18em]">Emergency Zoom</span>
-	<span class="mt-1 block text-sm leading-6">
-		I have an unexpected client call in 15 minutes. Show me the quietest place within a 5-minute walk with solid Wi-Fi right now.
-	</span>
+	<TriangleAlert class="size-6" />
 </button>
 {#if locateError}
-	<p class="mb-4 border border-accent px-3 py-2 text-sm text-accent">{locateError}</p>
+	<p class="fixed right-4 bottom-24 z-40 max-w-xs border border-accent bg-paper px-3 py-2 text-sm text-accent">
+		{locateError}
+	</p>
 {/if}
+<Dialog
+	open={confirmOpen}
+	title="Emergency meeting"
+	body="Do you have an emergency meeting? This finds the quietest open place within a 5-minute walk with solid Wi-Fi."
+	confirmLabel="Find a place"
+	danger
+	busy={locating}
+	oncancel={() => (confirmOpen = false)}
+	onconfirm={findEmergencyPlace}
+/>
 {#if data.filters.zoom}
 	<p class="mb-4 text-sm text-muted">
 		Quiet, open now, fast Wi-Fi, within a 5-minute walk.
@@ -104,7 +143,15 @@
 		</button>
 	</div>
 
-	<div class="mt-4 flex flex-wrap gap-2">
+	<details class="filter-bar group mt-4" open={activeFilters > 0}>
+		<summary
+			class="flex cursor-pointer list-none items-center justify-between font-mono text-[11px] uppercase tracking-[0.16em] text-muted sm:hidden [&::-webkit-details-marker]:hidden"
+		>
+			<span>Filters{activeFilters > 0 ? ` · ${activeFilters}` : ''}</span>
+			<span class="group-open:hidden">Show</span>
+			<span class="hidden group-open:inline">Hide</span>
+		</summary>
+		<div class="mt-4 flex flex-wrap gap-2 sm:mt-0">
 		<FilterChip name="work" checked={data.filters.workFriendly}>Work friendly</FilterChip>
 		<FilterChip name="notwork" checked={data.filters.notWorkFriendly}>Not work friendly</FilterChip>
 		<FilterChip name="wifi" checked={data.filters.wifi}>WiFi</FilterChip>
@@ -133,7 +180,8 @@
 		<FilterChip name="late" checked={data.filters.late}>Open till late</FilterChip>
 		<FilterChip name="ongoing" checked={data.filters.ongoingSpecials}>Ongoing specials</FilterChip>
 		<FilterChip name="upcoming" checked={data.filters.upcomingSpecials}>Upcoming specials</FilterChip>
-	</div>
+		</div>
+	</details>
 </form>
 
 <p class="mb-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">
@@ -141,7 +189,7 @@
 </p>
 
 {#if data.venues.length === 0}
-	<div class="border border-dashed border-line px-4 py-12 text-center text-sm text-muted">
+	<div class="mb-20 border border-dashed border-line px-4 py-12 text-center text-sm text-muted">
 		{#if data.filters.zoom}
 			No quiet place with fast Wi-Fi is open within a 5-minute walk.
 		{:else}
@@ -149,7 +197,7 @@
 		{/if}
 	</div>
 {:else}
-	<ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+	<ul class="grid gap-3 pb-20 sm:grid-cols-2 lg:grid-cols-3">
 		{#each data.venues as venue (venue.id)}
 			<li>
 				<VenueCard {venue} />

@@ -45,6 +45,7 @@ export type WorkInfo = {
 	lighting?: LightingType[];
 	lighting_notes?: string;
 	toilet?: string;
+	cell_reception?: string;
 	ergonomic_index?: ErgonomicIndex;
 	ergonomic_notes?: string;
 	notes?: string;

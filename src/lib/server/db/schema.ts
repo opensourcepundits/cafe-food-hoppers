@@ -8,7 +8,8 @@ import {
 	pgTable,
 	text,
 	timestamp,
-	uuid
+	uuid,
+	type AnyPgColumn
 } from 'drizzle-orm/pg-core';
 import type { Announcement, Contact, MenuCategory, OpeningHours, Special, WorkInfo } from '../../venue';
 
@@ -47,6 +48,9 @@ export const venues = pgTable(
 			.$type<Contact>()
 			.notNull()
 			.default(sql`'{}'::jsonb`),
+		createdBy: uuid('created_by').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
+		speedVerified: boolean('speed_verified').notNull().default(false),
+		noiseVerified: boolean('noise_verified').notNull().default(false),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
@@ -55,7 +59,8 @@ export const venues = pgTable(
 		index('idx_venues_district').on(table.district),
 		index('idx_venues_work_info').using('gin', table.workInfo),
 		index('idx_venues_menu').using('gin', table.menu.op('jsonb_path_ops')),
-		index('idx_venues_specials').using('gin', table.specials)
+		index('idx_venues_specials').using('gin', table.specials),
+		index('idx_venues_created_by').on(table.createdBy)
 	]
 );
 
@@ -69,7 +74,9 @@ export const users = pgTable(
 		email: text('email').notNull().unique(),
 		phone: text('phone').unique(),
 		passwordHash: text('password_hash').notNull(),
-		role: text('role').$type<'admin' | 'editor' | 'superuser'>().notNull().default('admin'),
+		role: text('role').$type<'user' | 'admin' | 'editor' | 'superuser'>().notNull().default('user'),
+		canCreate: boolean('can_create').notNull().default(false),
+		canEdit: boolean('can_edit').notNull().default(false),
 		venueId: uuid('venue_id').references(() => venues.id, { onDelete: 'set null' }),
 		emails: text('emails').array().notNull().default(sql`'{}'::text[]`),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -1,30 +1,42 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { redirect, type Cookies } from '@sveltejs/kit';
-import { and, desc, eq, gt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, ne, or, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { sessions, users, type UserRow } from '$lib/server/db/schema';
+import { sessions, users, venues, type UserRow } from '$lib/server/db/schema';
 import { hashPassword, verifyPassword } from '$lib/server/password';
 
-const COOKIE = 'place_session';
+export const SESSION_COOKIE = 'place_session';
 const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
 
-export type UserRole = 'admin' | 'editor' | 'superuser';
+export type UserRole = 'user' | 'admin' | 'editor' | 'superuser';
 
 export type AuthUser = {
 	id: string;
 	email: string;
 	phone: string | null;
 	role: UserRole;
+	canCreate: boolean;
+	canEdit: boolean;
 	venueId: string | null;
 	emails: string[];
 };
 
-export type PlaceOwnerAccount = {
+export type CreatedPlace = {
+	id: string;
+	name: string;
+	district: string;
+	slug: string;
+};
+
+export type RegisteredAccount = {
 	id: string;
 	email: string;
 	phone: string | null;
 	joinedAt: string;
 	lastSeenAt: string | null;
+	canCreate: boolean;
+	canEdit: boolean;
+	places: CreatedPlace[];
 };
 
 export function normalizeEmail(value: string): string {
@@ -40,7 +52,7 @@ export function isEmail(value: string): boolean {
 }
 
 export async function readSession(cookies: Cookies): Promise<AuthUser | null> {
-	const token = cookies.get(COOKIE);
+	const token = cookies.get(SESSION_COOKIE);
 	if (!token) return null;
 
 	const tokenHash = hashToken(token);
@@ -51,6 +63,8 @@ export async function readSession(cookies: Cookies): Promise<AuthUser | null> {
 			email: users.email,
 			phone: users.phone,
 			role: users.role,
+			canCreate: users.canCreate,
+			canEdit: users.canEdit,
 			venueId: users.venueId,
 			emails: users.emails,
 			expiresAt: sessions.expiresAt
@@ -61,7 +75,7 @@ export async function readSession(cookies: Cookies): Promise<AuthUser | null> {
 		.limit(1);
 
 	if (!row) {
-		cookies.delete(COOKIE, { path: '/' });
+		cookies.delete(SESSION_COOKIE, { path: '/' });
 		return null;
 	}
 
@@ -101,7 +115,7 @@ export async function registerUser(input: {
 		const passwordHash = await hashPassword(password);
 		const [row] = await db
 			.insert(users)
-			.values({ email, phone, passwordHash, role: 'admin', emails: [] })
+			.values({ email, phone, passwordHash, role: 'user', canCreate: false, canEdit: false, emails: [] })
 			.returning();
 		if (!row) return { ok: false, error: 'Could not create the account.' };
 		return { ok: true, user: toAuthUser(row) };
@@ -128,32 +142,85 @@ function formatWhen(value: Date | string | null): string | null {
 	return new Intl.DateTimeFormat('en-GB', MAURITIUS_TIME).format(date);
 }
 
-/** Registered place owners. Superusers and place editors are omitted. */
-export async function listPlaceOwners(): Promise<PlaceOwnerAccount[]> {
+/** Every account except seeded superusers, with the places each one created. */
+export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
 	const lastSeenAt = sql<Date | string | null>`(
 		select max(${sessions.createdAt})
 		from ${sessions}
 		where ${sessions.userId} = ${users.id}
 	)`;
-	const rows = await db
-		.select({
-			id: users.id,
-			email: users.email,
-			phone: users.phone,
-			createdAt: users.createdAt,
-			lastSeenAt
-		})
-		.from(users)
-		.where(eq(users.role, 'admin'))
-		.orderBy(desc(users.createdAt));
+	const [people, places] = await Promise.all([
+		db
+			.select({
+				id: users.id,
+				email: users.email,
+				phone: users.phone,
+				role: users.role,
+				canCreate: users.canCreate,
+				canEdit: users.canEdit,
+				createdAt: users.createdAt,
+				lastSeenAt
+			})
+			.from(users)
+			.where(ne(users.role, 'superuser'))
+			.orderBy(desc(users.createdAt)),
+		db
+			.select({
+				id: venues.id,
+				name: venues.name,
+				district: venues.district,
+				slug: venues.slug,
+				createdBy: venues.createdBy
+			})
+			.from(venues)
+			.orderBy(venues.name)
+	]);
 
-	return rows.map((row) => ({
-		id: row.id,
-		email: row.email,
-		phone: row.phone,
-		joinedAt: formatWhen(row.createdAt) ?? '—',
-		lastSeenAt: formatWhen(row.lastSeenAt)
-	}));
+	const byCreator = new Map<string, CreatedPlace[]>();
+	for (const place of places) {
+		if (!place.createdBy) continue;
+		const list = byCreator.get(place.createdBy) ?? [];
+		list.push({ id: place.id, name: place.name, district: place.district, slug: place.slug });
+		byCreator.set(place.createdBy, list);
+	}
+
+	return people.map((row) => {
+		const legacyAdmin = row.role === 'admin';
+		return {
+			id: row.id,
+			email: row.email,
+			phone: row.phone,
+			joinedAt: formatWhen(row.createdAt) ?? '—',
+			lastSeenAt: formatWhen(row.lastSeenAt),
+			canCreate: legacyAdmin || row.canCreate,
+			canEdit: legacyAdmin || row.canEdit,
+			places: byCreator.get(row.id) ?? []
+		};
+	});
+}
+
+export async function setAccountAccess(
+	userId: string,
+	access: { canCreate: boolean; canEdit: boolean }
+): Promise<{ ok: true } | { ok: false; error: string }> {
+	const [row] = await db
+		.select({ id: users.id, role: users.role })
+		.from(users)
+		.where(eq(users.id, userId))
+		.limit(1);
+	if (!row) return { ok: false, error: 'That account was not found.' };
+	if (row.role === 'superuser') return { ok: false, error: 'Superuser access is not changed here.' };
+
+	await db
+		.update(users)
+		.set({
+			canCreate: access.canCreate,
+			canEdit: access.canEdit,
+			role: row.role === 'admin' ? 'user' : row.role,
+			updatedAt: new Date()
+		})
+		.where(eq(users.id, userId));
+	return { ok: true };
 }
 
 export async function loginUser(
@@ -194,7 +261,7 @@ export async function createSession(userId: string, cookies: Cookies): Promise<v
 		tokenHash: hashToken(token),
 		expiresAt
 	});
-	cookies.set(COOKIE, token, {
+	cookies.set(SESSION_COOKIE, token, {
 		path: '/',
 		httpOnly: true,
 		sameSite: 'lax',
@@ -204,11 +271,11 @@ export async function createSession(userId: string, cookies: Cookies): Promise<v
 }
 
 export async function clearAdminSession(cookies: Cookies): Promise<void> {
-	const token = cookies.get(COOKIE);
+	const token = cookies.get(SESSION_COOKIE);
 	if (token) {
 		await db.delete(sessions).where(eq(sessions.tokenHash, hashToken(token)));
 	}
-	cookies.delete(COOKIE, { path: '/' });
+	cookies.delete(SESSION_COOKIE, { path: '/' });
 }
 
 async function findUserByEmail(email: string): Promise<UserRow | undefined> {
@@ -233,15 +300,22 @@ function toAuthUser(row: {
 	email: string;
 	phone: string | null;
 	role: string | null;
+	canCreate: boolean | null;
+	canEdit: boolean | null;
 	venueId: string | null;
 	emails: string[] | null;
 }): AuthUser {
-	const role: UserRole = row.role === 'editor' || row.role === 'superuser' ? row.role : 'admin';
+	const role: UserRole =
+		row.role === 'editor' || row.role === 'superuser' || row.role === 'admin' || row.role === 'user'
+			? row.role
+			: 'user';
 	return {
 		id: row.id,
 		email: row.email,
 		phone: row.phone,
 		role,
+		canCreate: Boolean(row.canCreate),
+		canEdit: Boolean(row.canEdit),
 		venueId: row.venueId,
 		emails: row.emails ?? []
 	};

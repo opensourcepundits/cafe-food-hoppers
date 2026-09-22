@@ -20,6 +20,9 @@ CREATE TABLE venues (
     specials JSONB NOT NULL DEFAULT '[]'::jsonb,
     menu JSONB DEFAULT '[]'::jsonb,
     contact JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_by UUID,
+    speed_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    noise_verified BOOLEAN NOT NULL DEFAULT FALSE,
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -50,7 +53,9 @@ CREATE TABLE users (
     email TEXT UNIQUE NOT NULL,
     phone TEXT UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin', 'editor', 'superuser')),
+    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'editor', 'superuser')),
+    can_create BOOLEAN NOT NULL DEFAULT FALSE,
+    can_edit BOOLEAN NOT NULL DEFAULT FALSE,
     venue_id UUID REFERENCES venues(id) ON DELETE SET NULL,
     emails TEXT[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -70,6 +75,11 @@ CREATE INDEX idx_sessions_user ON sessions (user_id);
 CREATE INDEX idx_sessions_expires ON sessions (expires_at);
 CREATE INDEX idx_users_venue ON users (venue_id);
 CREATE INDEX idx_users_emails ON users USING gin (emails);
+CREATE INDEX idx_venues_created_by ON venues (created_by);
+
+ALTER TABLE venues
+	ADD CONSTRAINT venues_created_by_users_id_fk
+	FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
 
 CREATE TRIGGER users_updated_at
 BEFORE UPDATE ON users

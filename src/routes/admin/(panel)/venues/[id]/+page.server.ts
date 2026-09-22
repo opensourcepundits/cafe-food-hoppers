@@ -1,20 +1,28 @@
 import { error, fail, isHttpError, isRedirect, redirect } from '@sveltejs/kit';
-import { deleteVenue, getVenueById, updateVenue } from '$lib/server/venues';
+import { deleteVenue, getVenueById, setVenueBadges, updateVenue } from '$lib/server/venues';
 import { isUniqueViolation, payloadFromForm } from '$lib/server/venue-input';
 import { filesFromForm, persistVenueImages, removeImagePaths } from '$lib/server/storage';
-import { isOwner, requireVenueEditor } from '$lib/server/access';
+import { canDeleteVenue, isSuperuser, requireVenueEditor } from '$lib/server/access';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const venue = await getVenueById(params.id);
 	if (!venue) error(404, 'Place not found.');
-	requireVenueEditor(locals.user, venue.id);
-	return { venue, saved: url.searchParams.get('saved') === '1', canDelete: isOwner(locals.user) };
+	requireVenueEditor(locals.user, venue);
+	return {
+		venue,
+		saved: url.searchParams.get('saved') === '1',
+		badgesSaved: url.searchParams.get('badges') === '1',
+		canDelete: canDeleteVenue(locals.user, venue),
+		canVerify: isSuperuser(locals.user)
+	};
 };
 
 export const actions: Actions = {
 	save: async ({ request, params, locals }) => {
-		requireVenueEditor(locals.user, params.id);
+		const existing = await getVenueById(params.id);
+		if (!existing) error(404, 'Place not found.');
+		requireVenueEditor(locals.user, existing);
 		const data = await request.formData();
 		const parsed = payloadFromForm(data);
 		if (!parsed.ok) return fail(400, { error: parsed.error });
@@ -38,9 +46,22 @@ export const actions: Actions = {
 			return fail(500, { error: message });
 		}
 	},
+	badges: async ({ request, params, locals }) => {
+		if (!locals.user) redirect(303, '/admin/login');
+		if (!isSuperuser(locals.user)) error(403, 'Only a superuser can set verification badges.');
+		const data = await request.formData();
+		const venue = await setVenueBadges(params.id, {
+			speedVerified: data.get('speedVerified') === '1',
+			noiseVerified: data.get('noiseVerified') === '1'
+		});
+		if (!venue) error(404, 'Place not found.');
+		redirect(303, `/admin/venues/${params.id}?badges=1`);
+	},
 	delete: async ({ params, locals }) => {
-		requireVenueEditor(locals.user, params.id);
-		if (!isOwner(locals.user)) error(403, 'Only site admins can delete a place.');
+		const existing = await getVenueById(params.id);
+		if (!existing) error(404, 'Place not found.');
+		requireVenueEditor(locals.user, existing);
+		if (!canDeleteVenue(locals.user, existing)) error(403, 'You cannot delete this place.');
 		const venue = await getVenueById(params.id);
 		if (venue) await removeImagePaths(venue.images.map((image) => image.path));
 		await deleteVenue(params.id);

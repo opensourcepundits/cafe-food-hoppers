@@ -58,6 +58,11 @@
 		outletAccess: venue?.workInfo.outlet_access ?? 'some',
 		laptopFriendly: venue?.workInfo.laptop_friendly ?? true,
 		noiseLevel: venue?.workInfo.noise_level ?? 'moderate',
+		niceView: venue?.workInfo.nice_view ?? false,
+		ocean: venue?.workInfo.close_to_ocean ?? false,
+		airConditioning: venue?.workInfo.air_conditioning ?? false,
+		indoor: venue?.workInfo.indoor_seating ?? false,
+		outdoor: venue?.workInfo.outdoor_seating ?? false,
 		workNotes: venue?.workInfo.notes ?? '',
 		hours: normalizeOpeningHours(venue?.openingHours ?? emptyOpeningHours()),
 		phone: venue?.contact.phone ?? '',
@@ -92,6 +97,11 @@
 	let outletAccess = $state(seed.outletAccess);
 	let laptopFriendly = $state(seed.laptopFriendly);
 	let noiseLevel = $state(seed.noiseLevel);
+	let niceView = $state(seed.niceView);
+	let ocean = $state(seed.ocean);
+	let airConditioning = $state(seed.airConditioning);
+	let indoor = $state(seed.indoor);
+	let outdoor = $state(seed.outdoor);
 	let workNotes = $state(seed.workNotes);
 	let hours = $state<OpeningHours>(seed.hours);
 	let phone = $state(seed.phone);
@@ -136,6 +146,11 @@
 				outlet_access: outletAccess,
 				laptop_friendly: laptopFriendly,
 				noise_level: noiseLevel,
+				nice_view: niceView,
+				close_to_ocean: ocean,
+				air_conditioning: airConditioning,
+				indoor_seating: indoor,
+				outdoor_seating: outdoor,
 				notes: workNotes
 			},
 			openingHours: normalizeOpeningHours(hours),
@@ -489,6 +504,13 @@
 			<label class="flex items-center gap-2"
 				><input type="checkbox" bind:checked={laptopFriendly} /> Laptop friendly</label
 			>
+		</div>
+		<div class="mt-4 flex flex-wrap gap-4 text-sm">
+			<label class="flex items-center gap-2"><input type="checkbox" bind:checked={niceView} /> Nice view</label>
+			<label class="flex items-center gap-2"><input type="checkbox" bind:checked={ocean} /> Close to ocean</label>
+			<label class="flex items-center gap-2"><input type="checkbox" bind:checked={airConditioning} /> A/C</label>
+			<label class="flex items-center gap-2"><input type="checkbox" bind:checked={indoor} /> Indoor seating</label>
+			<label class="flex items-center gap-2"><input type="checkbox" bind:checked={outdoor} /> Outdoor seating</label>
 		</div>
 		<div class="mt-4 grid gap-4 sm:grid-cols-3">
 			<Field label="WiFi quality">

@@ -22,7 +22,7 @@ import {
 	type WorkInfo
 } from '$lib/venue';
 
-export type VenueWrite = Omit<Venue, 'id' | 'createdAt' | 'updatedAt'>;
+export type VenueWrite = Omit<Venue, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'speedVerified' | 'noiseVerified'>;
 
 const ANNOUNCEMENT_TYPES = new Set<AnnouncementType>(['event', 'closure', 'notice', 'alert']);
 const WIFI_QUALITY = new Set<WifiQuality>(['fast', 'ok', 'slow']);
@@ -96,6 +96,11 @@ function parseWorkInfo(value: unknown): WorkInfo {
 		outlet_access: OUTLET_ACCESS.has(access as OutletAccess) ? (access as OutletAccess) : undefined,
 		laptop_friendly: Boolean(input.laptop_friendly),
 		noise_level: NOISE.has(noise as NoiseLevel) ? (noise as NoiseLevel) : undefined,
+		nice_view: Boolean(input.nice_view),
+		close_to_ocean: Boolean(input.close_to_ocean),
+		air_conditioning: Boolean(input.air_conditioning),
+		indoor_seating: Boolean(input.indoor_seating),
+		outdoor_seating: Boolean(input.outdoor_seating),
 		notes: asString(input.notes) || undefined
 	};
 }

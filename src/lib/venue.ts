@@ -26,6 +26,11 @@ export type WorkInfo = {
 	outlet_access?: OutletAccess;
 	laptop_friendly?: boolean;
 	noise_level?: NoiseLevel;
+	nice_view?: boolean;
+	close_to_ocean?: boolean;
+	air_conditioning?: boolean;
+	indoor_seating?: boolean;
+	outdoor_seating?: boolean;
 	notes?: string;
 };
 
@@ -117,6 +122,9 @@ export type Venue = {
 	menu: MenuCategory[];
 	contact: Contact;
 	images: VenueImage[];
+	createdBy: string | null;
+	speedVerified: boolean;
+	noiseVerified: boolean;
 	createdAt: Date | null;
 	updatedAt: Date | null;
 };
@@ -141,6 +149,11 @@ export type VenueFilters = {
 	late: boolean;
 	ongoingSpecials: boolean;
 	upcomingSpecials: boolean;
+	niceView: boolean;
+	ocean: boolean;
+	airConditioning: boolean;
+	indoor: boolean;
+	outdoor: boolean;
 };
 
 const WEEKDAY_LABEL: Record<Weekday, string> = {
@@ -373,6 +386,23 @@ export function outletLabel(access: OutletAccess | undefined, outlets: boolean |
 	if (access === 'plenty') return 'Many outlets';
 	if (access === 'some' || outlets) return 'Some outlets';
 	return null;
+}
+
+export function amenityLabels(info: WorkInfo): string[] {
+	const labels: string[] = [];
+	if (info.nice_view) labels.push('Nice view');
+	if (info.close_to_ocean) labels.push('Close to ocean');
+	if (info.air_conditioning) labels.push('A/C');
+	if (info.indoor_seating) labels.push('Indoor seating');
+	if (info.outdoor_seating) labels.push('Outdoor seating');
+	return labels;
+}
+
+export function verificationLabels(venue: { speedVerified?: boolean; noiseVerified?: boolean }): string[] {
+	const labels: string[] = [];
+	if (venue.speedVerified) labels.push('Speed verified');
+	if (venue.noiseVerified) labels.push('Decibel verified');
+	return labels;
 }
 
 export function wifiLabel(info: WorkInfo): string | null {

@@ -9,7 +9,9 @@ declare global {
 				id: string;
 				email: string;
 				phone: string | null;
-				role: 'admin' | 'editor' | 'superuser';
+				role: 'user' | 'admin' | 'editor' | 'superuser';
+				canCreate: boolean;
+				canEdit: boolean;
 				venueId: string | null;
 				emails: string[];
 			} | null;

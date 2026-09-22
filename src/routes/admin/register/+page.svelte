@@ -11,7 +11,9 @@
 <section class="mx-auto max-w-md py-6">
 	<p class="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">Admin</p>
 	<h2 class="mt-2 text-3xl font-semibold tracking-tight">Register</h2>
-	<p class="mt-3 text-sm leading-6 text-muted">Email, phone, and a password. Sign in later with either email or phone.</p>
+	<p class="mt-3 text-sm leading-6 text-muted">
+		Email, phone, and a password. A new account cannot create or edit places until a superuser grants access.
+	</p>
 
 	<form method="POST" class="mt-8 space-y-4">
 		{#if form?.error}

@@ -23,6 +23,27 @@
 	</a>
 </p>
 
+{#if data.canVerify}
+	<form method="POST" action="?/badges" class="mb-8 border border-line bg-paper-2 p-4">
+		<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Verification badges</h3>
+		<p class="mt-2 text-sm text-muted">Only a superuser can mark these. They show on the public place page.</p>
+		{#if data.badgesSaved}
+			<p class="mt-3 text-sm">Badges saved.</p>
+		{/if}
+		<div class="mt-4 flex flex-wrap gap-4 text-sm">
+			<label class="flex items-center gap-2">
+				<input type="checkbox" name="speedVerified" value="1" checked={data.venue.speedVerified} />
+				Internet speed test verified
+			</label>
+			<label class="flex items-center gap-2">
+				<input type="checkbox" name="noiseVerified" value="1" checked={data.venue.noiseVerified} />
+				Decibel test verified
+			</label>
+		</div>
+		<button type="submit" class="mt-4 border border-ink bg-ink px-3 py-1.5 text-sm text-paper">Save badges</button>
+	</form>
+{/if}
+
 <VenueForm venue={data.venue} error={form?.error} saved={data.saved && !form?.error} />
 
 {#if data.canDelete}

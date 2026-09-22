@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { listVenuesAdmin } from '$lib/server/venues';
 import { clearAdminSession } from '$lib/server/auth';
+import { canEditVenue } from '$lib/server/access';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
@@ -12,7 +13,12 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				return hay.includes(q.toLowerCase());
 			})
 		: venues;
-	return { venues: filtered, q, total: venues.length, deleted: url.searchParams.get('deleted') === '1' };
+	return {
+		venues: filtered.map((venue) => ({ ...venue, editable: canEditVenue(locals.user, venue) })),
+		q,
+		total: venues.length,
+		deleted: url.searchParams.get('deleted') === '1'
+	};
 };
 
 export const actions: Actions = {

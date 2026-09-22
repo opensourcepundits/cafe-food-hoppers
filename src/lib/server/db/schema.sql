@@ -48,10 +48,14 @@ EXECUTE FUNCTION set_updated_at();
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT UNIQUE NOT NULL,
-    phone TEXT UNIQUE NOT NULL,
+    phone TEXT UNIQUE,
     password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin', 'editor', 'superuser')),
+    venue_id UUID REFERENCES venues(id) ON DELETE SET NULL,
+    emails TEXT[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT users_editor_venue CHECK (role <> 'editor' OR venue_id IS NOT NULL)
 );
 
 CREATE TABLE sessions (
@@ -64,6 +68,8 @@ CREATE TABLE sessions (
 
 CREATE INDEX idx_sessions_user ON sessions (user_id);
 CREATE INDEX idx_sessions_expires ON sessions (expires_at);
+CREATE INDEX idx_users_venue ON users (venue_id);
+CREATE INDEX idx_users_emails ON users USING gin (emails);
 
 CREATE TRIGGER users_updated_at
 BEFORE UPDATE ON users

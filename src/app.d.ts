@@ -9,7 +9,7 @@ declare global {
 				id: string;
 				email: string;
 				phone: string | null;
-				role: 'admin' | 'editor';
+				role: 'admin' | 'editor' | 'superuser';
 				venueId: string | null;
 				emails: string[];
 			} | null;

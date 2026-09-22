@@ -2,6 +2,8 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { venues, type NewVenue } from './schema';
 import { resolveDatabaseUrl, requiresSsl } from './env';
+import { USER_COLUMNS_SQL } from './user-columns';
+import { upsertSuperusers } from '../superusers';
 import type { OpeningHours, Weekday } from '../../venue';
 
 const WEEK: Weekday[] = [
@@ -565,8 +567,15 @@ async function seed() {
 		EXECUTE FUNCTION set_updated_at();
 	`);
 
+	await client.unsafe(USER_COLUMNS_SQL);
+	const superusers = await upsertSuperusers(client, process.env);
 	await client.end();
 	console.log(`Seeded ${seedVenues.length} venues.`);
+	if (superusers) {
+		console.log(`Ensured ${superusers} superuser account${superusers === 1 ? '' : 's'}.`);
+	} else {
+		console.log('No SUPERUSER_EMAIL set; skipped superuser seed.');
+	}
 }
 
 seed().catch((error) => {

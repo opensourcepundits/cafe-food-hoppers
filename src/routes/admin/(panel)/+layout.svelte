@@ -5,6 +5,7 @@
 	const path = $derived(page.url.pathname);
 	const email = $derived(page.data.user?.email);
 	const isOwner = $derived(page.data.isOwner);
+	const isSuperuser = $derived(page.data.isSuperuser);
 </script>
 
 <div class="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
@@ -30,6 +31,8 @@
 			>
 				New
 			</a>
+		{/if}
+		{#if isSuperuser}
 			<a
 				href="/admin/users"
 				class="border-b pb-0.5 {path.startsWith('/admin/users')

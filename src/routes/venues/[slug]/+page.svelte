@@ -15,6 +15,7 @@
 	import {
 		dayHoursLabel,
 		formatSpecialWhen,
+		amenityLabels,
 		hoursLabel,
 		mapsUrl,
 		mur,
@@ -22,6 +23,7 @@
 		orderedWeekdays,
 		outletLabel,
 		parseMapsPin,
+		verificationLabels,
 		weekdayLabel,
 		wifiLabel
 	} from '$lib/venue';
@@ -56,6 +58,20 @@
 			<p class="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">Featured</p>
 		{/if}
 		<h2 class="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{venue.name}</h2>
+		{#if amenityLabels(venue.workInfo).length || verificationLabels(venue).length}
+			<ul class="mt-3 flex flex-wrap gap-1.5">
+				{#each amenityLabels(venue.workInfo) as label (label)}
+					<li class="border border-line px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+						{label}
+					</li>
+				{/each}
+				{#each verificationLabels(venue) as label (label)}
+					<li class="border border-ink px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em]">
+						{label}
+					</li>
+				{/each}
+			</ul>
+		{/if}
 		<p class="mt-2 flex items-center gap-2 text-sm text-muted">
 			<MapPin class="size-4" />
 			{venue.district}

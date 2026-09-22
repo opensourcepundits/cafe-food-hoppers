@@ -4,7 +4,7 @@
 	let { children } = $props();
 	const path = $derived(page.url.pathname);
 	const email = $derived(page.data.user?.email);
-	const isOwner = $derived(page.data.isOwner);
+	const canCreate = $derived(page.data.canCreate);
 	const isSuperuser = $derived(page.data.isSuperuser);
 </script>
 
@@ -22,7 +22,7 @@
 		>
 			All
 		</a>
-		{#if isOwner}
+		{#if canCreate}
 			<a
 				href="/admin/venues/new"
 				class="border-b pb-0.5 {path.startsWith('/admin/venues/new')

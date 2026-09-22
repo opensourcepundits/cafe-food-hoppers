@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formatSpecialWhen, type LiveVenue } from '$lib/venue';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import { hoursLabel, noiseLabel, outletLabel, wifiLabel } from '$lib/venue';
+	import { amenityLabels, hoursLabel, noiseLabel, outletLabel, verificationLabels, wifiLabel } from '$lib/venue';
 
 	let { venue }: { venue: LiveVenue } = $props();
 
@@ -11,7 +11,9 @@
 			wifiLabel(venue.workInfo),
 			outletLabel(venue.workInfo.outlet_access, venue.workInfo.outlets),
 			noiseLabel(venue.workInfo.noise_level),
-			venue.openLate ? 'Open till late' : null
+			venue.openLate ? 'Open till late' : null,
+			...amenityLabels(venue.workInfo),
+			...verificationLabels(venue)
 		].filter((value): value is string => Boolean(value))
 	);
 
@@ -61,8 +63,8 @@
 			{#each workBits as bit (bit)}
 				<li
 					class="border border-line px-2 py-0.5 text-[11px] text-muted"
-					class:border-ink={bit === 'Work friendly' || bit === 'Open till late'}
-					class:text-ink={bit === 'Work friendly' || bit === 'Open till late'}
+					class:border-ink={bit === 'Work friendly' || bit === 'Open till late' || bit.endsWith('verified')}
+					class:text-ink={bit === 'Work friendly' || bit === 'Open till late' || bit.endsWith('verified')}
 				>
 					{bit}
 				</li>

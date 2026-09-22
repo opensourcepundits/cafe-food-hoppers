@@ -34,10 +34,10 @@
 
 {#if data.venues.length === 0}
 	<div class="border border-dashed border-line px-4 py-12 text-center text-sm text-muted">
-		{#if data.isOwner}
+		{#if data.canCreate}
 			No places yet. <a href="/admin/venues/new" class="underline decoration-line underline-offset-4">Add one</a>.
 		{:else}
-			No place is assigned to this account yet.
+			This account cannot create or edit places yet.
 		{/if}
 	</div>
 {:else}
@@ -65,12 +65,14 @@
 						</td>
 						<td class="px-4 py-3 tabular-nums text-muted">{venue.specials.length}</td>
 						<td class="px-4 py-3 text-right">
-							<a
-								href="/admin/venues/{venue.id}"
-								class="font-mono text-[11px] uppercase tracking-[0.14em] underline decoration-line underline-offset-4"
-							>
-								Edit
-							</a>
+							{#if venue.editable}
+								<a
+									href="/admin/venues/{venue.id}"
+									class="font-mono text-[11px] uppercase tracking-[0.14em] underline decoration-line underline-offset-4"
+								>
+									Edit
+								</a>
+							{/if}
 						</td>
 					</tr>
 				{/each}

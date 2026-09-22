@@ -546,6 +546,21 @@ async function seed() {
 		CREATE INDEX IF NOT EXISTS idx_venues_specials ON venues USING gin (specials);
 	`);
 
+	const placeFlags: Record<string, Partial<(typeof seedVenues)[number]['workInfo']>> = {
+		bloom: { nice_view: true, air_conditioning: true, indoor_seating: true },
+		'the-workshop': { air_conditioning: true, indoor_seating: true },
+		'le-caudan-roastery': { nice_view: true, close_to_ocean: true, indoor_seating: true, outdoor_seating: true },
+		'tamarin-coffee-lab': { nice_view: true, close_to_ocean: true, outdoor_seating: true },
+		'west-coast-espresso': { close_to_ocean: true, outdoor_seating: true },
+		'port-louis-grounds': { air_conditioning: true, indoor_seating: true },
+		'moka-mill': { nice_view: true, outdoor_seating: true },
+		'grand-baie-social': { close_to_ocean: true, outdoor_seating: true },
+		'ebene-desk': { air_conditioning: true, indoor_seating: true }
+	};
+	for (const venue of seedVenues) {
+		venue.workInfo = { ...venue.workInfo, ...placeFlags[venue.slug] };
+	}
+
 	await db.delete(venues);
 	await db.insert(venues).values(seedVenues);
 

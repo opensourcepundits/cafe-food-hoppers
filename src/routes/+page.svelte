@@ -59,6 +59,11 @@
 		<FilterChip name="notwork" checked={data.filters.notWorkFriendly}>Not work friendly</FilterChip>
 		<FilterChip name="wifi" checked={data.filters.wifi}>WiFi</FilterChip>
 		<FilterChip name="outlets" checked={data.filters.outlets}>Outlets</FilterChip>
+		<FilterChip name="view" checked={data.filters.niceView}>Nice view</FilterChip>
+		<FilterChip name="ocean" checked={data.filters.ocean}>Close to ocean</FilterChip>
+		<FilterChip name="ac" checked={data.filters.airConditioning}>A/C</FilterChip>
+		<FilterChip name="indoor" checked={data.filters.indoor}>Indoor seating</FilterChip>
+		<FilterChip name="outdoor" checked={data.filters.outdoor}>Outdoor seating</FilterChip>
 		<FilterChip name="open" checked={data.filters.openNow}>Open now</FilterChip>
 		<FilterChip name="late" checked={data.filters.late}>Open till late</FilterChip>
 		<FilterChip name="ongoing" checked={data.filters.ongoingSpecials}>Ongoing specials</FilterChip>

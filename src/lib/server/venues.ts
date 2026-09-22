@@ -1,6 +1,7 @@
 import { and, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { venues, type VenueRow } from '$lib/server/db/schema';
+import type { AuthUser } from '$lib/server/auth';
 import type { VenueWrite } from '$lib/server/venue-input';
 import {
 	activeAnnouncements,
@@ -53,6 +54,9 @@ export function mapVenue(row: VenueRow): Venue {
 		menu: asArray<MenuCategory>(row.menu),
 		contact: publicContact,
 		images: storedImages.filter((image) => Boolean(image?.url)),
+		createdBy: row.createdBy,
+		speedVerified: row.speedVerified,
+		noiseVerified: row.noiseVerified,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt
 	};
@@ -69,7 +73,12 @@ export function parseFilters(url: URL): VenueFilters {
 		openNow: url.searchParams.get('open') === '1',
 		late: url.searchParams.get('late') === '1',
 		ongoingSpecials: url.searchParams.get('ongoing') === '1',
-		upcomingSpecials: url.searchParams.get('upcoming') === '1'
+		upcomingSpecials: url.searchParams.get('upcoming') === '1',
+		niceView: url.searchParams.get('view') === '1',
+		ocean: url.searchParams.get('ocean') === '1',
+		airConditioning: url.searchParams.get('ac') === '1',
+		indoor: url.searchParams.get('indoor') === '1',
+		outdoor: url.searchParams.get('outdoor') === '1'
 	};
 }
 
@@ -86,6 +95,26 @@ export async function listVenues(filters: VenueFilters): Promise<LiveVenue[]> {
 
 	if (filters.outlets) {
 		conditions.push(sql`${venues.workInfo} @> '{"outlets":true}'::jsonb`);
+	}
+
+	if (filters.niceView) {
+		conditions.push(sql`${venues.workInfo} @> '{"nice_view":true}'::jsonb`);
+	}
+
+	if (filters.ocean) {
+		conditions.push(sql`${venues.workInfo} @> '{"close_to_ocean":true}'::jsonb`);
+	}
+
+	if (filters.airConditioning) {
+		conditions.push(sql`${venues.workInfo} @> '{"air_conditioning":true}'::jsonb`);
+	}
+
+	if (filters.indoor) {
+		conditions.push(sql`${venues.workInfo} @> '{"indoor_seating":true}'::jsonb`);
+	}
+
+	if (filters.outdoor) {
+		conditions.push(sql`${venues.workInfo} @> '{"outdoor_seating":true}'::jsonb`);
 	}
 
 	if (filters.q) {
@@ -155,13 +184,14 @@ export async function getVenueBySlug(slug: string): Promise<LiveVenue | null> {
 	return row ? withLiveState(mapVenue(row)) : null;
 }
 
-export async function listVenuesAdmin(user?: { role: string; venueId: string | null } | null): Promise<Venue[]> {
+export async function listVenuesAdmin(user?: AuthUser | null): Promise<Venue[]> {
 	const rows = await db.select().from(venues).orderBy(venues.name);
 	const mapped = rows.map(mapVenue);
-	if (user?.role === 'editor') {
-		return mapped.filter((venue) => venue.id === user.venueId);
-	}
-	return mapped;
+	if (!user || user.role === 'superuser' || user.role === 'admin') return mapped;
+	return mapped.filter((venue) => {
+		if (user.role === 'editor' && user.venueId === venue.id) return true;
+		return venue.createdBy === user.id;
+	});
 }
 
 export async function getVenueById(id: string): Promise<Venue | null> {
@@ -178,11 +208,23 @@ function persist(input: VenueWrite, slug: string) {
 	};
 }
 
-export async function createVenue(input: VenueWrite): Promise<Venue> {
+export async function createVenue(input: VenueWrite, createdBy: string): Promise<Venue> {
 	const slug = await uniqueSlug(input.slug);
-	const [row] = await db.insert(venues).values(persist(input, slug)).returning();
+	const [row] = await db.insert(venues).values({ ...persist(input, slug), createdBy }).returning();
 	if (!row) throw new Error('Insert failed');
 	return mapVenue(row);
+}
+
+export async function setVenueBadges(
+	id: string,
+	badges: { speedVerified: boolean; noiseVerified: boolean }
+): Promise<Venue | null> {
+	const [row] = await db
+		.update(venues)
+		.set({ ...badges, updatedAt: new Date() })
+		.where(eq(venues.id, id))
+		.returning();
+	return row ? mapVenue(row) : null;
 }
 
 export async function updateVenue(id: string, input: VenueWrite): Promise<Venue | null> {

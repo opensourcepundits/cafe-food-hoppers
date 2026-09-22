@@ -69,7 +69,7 @@ export const users = pgTable(
 		email: text('email').notNull().unique(),
 		phone: text('phone').unique(),
 		passwordHash: text('password_hash').notNull(),
-		role: text('role').$type<'admin' | 'editor'>().notNull().default('admin'),
+		role: text('role').$type<'admin' | 'editor' | 'superuser'>().notNull().default('admin'),
 		venueId: uuid('venue_id').references(() => venues.id, { onDelete: 'set null' }),
 		emails: text('emails').array().notNull().default(sql`'{}'::text[]`),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

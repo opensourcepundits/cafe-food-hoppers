@@ -1,6 +1,8 @@
 import { env } from '$env/dynamic/private';
 import postgres from 'postgres';
+import { upsertSuperusers } from '../superusers';
 import { requiresSsl, resolveDatabaseUrl } from './env';
+import { USER_COLUMNS_SQL } from './user-columns';
 
 let pending: Promise<void> | undefined;
 
@@ -37,15 +39,6 @@ async function applySchema(): Promise<void> {
 	const url = requireDatabaseUrl();
 	const sql = postgres(url, postgresOptions(url, 1));
 	try {
-		const rows = (await sql.unsafe(
-			`select
-				to_regclass('public.venues') is not null
-				and to_regclass('public.users') is not null
-				and to_regclass('public.sessions') is not null as ready`
-		)) as { ready: boolean }[];
-		const row = rows[0];
-		if (row?.ready) return;
-
 		await sql.unsafe(`
 			CREATE TABLE IF NOT EXISTS venues (
 				id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -117,6 +110,13 @@ async function applySchema(): Promise<void> {
 			FOR EACH ROW
 			EXECUTE FUNCTION set_updated_at();
 		`);
+		await sql.unsafe(USER_COLUMNS_SQL);
+		try {
+			const seeded = await upsertSuperusers(sql, env);
+			if (seeded) console.log(`Ensured ${seeded} superuser account${seeded === 1 ? '' : 's'}.`);
+		} catch (error) {
+			console.error('Superuser seed failed.', error);
+		}
 	} finally {
 		await sql.end({ timeout: 5 });
 	}

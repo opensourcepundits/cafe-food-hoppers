@@ -1,16 +1,14 @@
-import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
-import { promisify } from 'node:util';
+import { createHash, randomBytes } from 'node:crypto';
 import { redirect, type Cookies } from '@sveltejs/kit';
-import { and, eq, gt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, or, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { sessions, users, venues, type UserRow } from '$lib/server/db/schema';
+import { sessions, users, type UserRow } from '$lib/server/db/schema';
+import { hashPassword, verifyPassword } from '$lib/server/password';
 
-const scrypt = promisify(scryptCallback);
 const COOKIE = 'place_session';
 const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
-const KEY_LEN = 64;
 
-export type UserRole = 'admin' | 'editor';
+export type UserRole = 'admin' | 'editor' | 'superuser';
 
 export type AuthUser = {
 	id: string;
@@ -21,8 +19,12 @@ export type AuthUser = {
 	emails: string[];
 };
 
-export type StaffUser = AuthUser & {
-	venueName: string | null;
+export type PlaceOwnerAccount = {
+	id: string;
+	email: string;
+	phone: string | null;
+	joinedAt: string;
+	lastSeenAt: string | null;
 };
 
 export function normalizeEmail(value: string): string {
@@ -35,18 +37,6 @@ export function normalizePhone(value: string): string {
 
 export function isEmail(value: string): boolean {
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-export function parseEmails(value: string): string[] {
-	const seen = new Set<string>();
-	const emails: string[] = [];
-	for (const part of value.split(/[\s,;]+/)) {
-		const email = normalizeEmail(part);
-		if (!email || seen.has(email)) continue;
-		seen.add(email);
-		emails.push(email);
-	}
-	return emails;
 }
 
 export async function readSession(cookies: Cookies): Promise<AuthUser | null> {
@@ -75,14 +65,7 @@ export async function readSession(cookies: Cookies): Promise<AuthUser | null> {
 		return null;
 	}
 
-	return {
-		id: row.id,
-		email: row.email,
-		phone: row.phone,
-		role: row.role === 'editor' ? 'editor' : 'admin',
-		venueId: row.venueId,
-		emails: row.emails ?? []
-	};
+	return toAuthUser(row);
 }
 
 export function hasAdminSession(user: AuthUser | null): boolean {
@@ -129,70 +112,47 @@ export async function registerUser(input: {
 	}
 }
 
-export async function createStaffUser(input: {
-	emails: string;
-	password: string;
-	venueId: string;
-}): Promise<{ ok: true; user: AuthUser } | { ok: false; error: string }> {
-	const emails = parseEmails(input.emails);
-	const password = input.password;
-	const venueId = input.venueId.trim();
+const MAURITIUS_TIME: Intl.DateTimeFormatOptions = {
+	timeZone: 'Indian/Mauritius',
+	day: 'numeric',
+	month: 'short',
+	year: 'numeric',
+	hour: '2-digit',
+	minute: '2-digit'
+};
 
-	if (!emails.length) return { ok: false, error: 'Enter at least one email address.' };
-	if (emails.some((email) => !isEmail(email))) return { ok: false, error: 'One of the emails is not valid.' };
-	if (password.length < 8) return { ok: false, error: 'Password must be at least 8 characters.' };
-	if (!venueId) return { ok: false, error: 'Assign a place.' };
-
-	try {
-		const [venue] = await db.select({ id: venues.id }).from(venues).where(eq(venues.id, venueId)).limit(1);
-		if (!venue) return { ok: false, error: 'That place was not found.' };
-
-		for (const email of emails) {
-			if (await emailTaken(email)) {
-				return { ok: false, error: `${email} is already registered.` };
-			}
-		}
-
-		const [primary, ...aliases] = emails;
-		const passwordHash = await hashPassword(password);
-		const [row] = await db
-			.insert(users)
-			.values({
-				email: primary,
-				phone: null,
-				passwordHash,
-				role: 'editor',
-				venueId,
-				emails: aliases
-			})
-			.returning();
-		if (!row) return { ok: false, error: 'Could not create the user.' };
-		return { ok: true, user: toAuthUser(row) };
-	} catch (error) {
-		console.error(error);
-		if (error && typeof error === 'object' && 'cause' in error) console.error((error as { cause: unknown }).cause);
-		return { ok: false, error: 'Could not create the user. Run the staff SQL, then try again.' };
-	}
+function formatWhen(value: Date | string | null): string | null {
+	if (!value) return null;
+	const date = value instanceof Date ? value : new Date(value);
+	if (Number.isNaN(date.getTime())) return null;
+	return new Intl.DateTimeFormat('en-GB', MAURITIUS_TIME).format(date);
 }
 
-export async function listStaff(): Promise<StaffUser[]> {
+/** Registered place owners. Superusers and place editors are omitted. */
+export async function listPlaceOwners(): Promise<PlaceOwnerAccount[]> {
+	const lastSeenAt = sql<Date | string | null>`(
+		select max(${sessions.createdAt})
+		from ${sessions}
+		where ${sessions.userId} = ${users.id}
+	)`;
 	const rows = await db
 		.select({
 			id: users.id,
 			email: users.email,
 			phone: users.phone,
-			role: users.role,
-			venueId: users.venueId,
-			emails: users.emails,
-			venueName: venues.name
+			createdAt: users.createdAt,
+			lastSeenAt
 		})
 		.from(users)
-		.leftJoin(venues, eq(users.venueId, venues.id))
-		.orderBy(users.createdAt);
+		.where(eq(users.role, 'admin'))
+		.orderBy(desc(users.createdAt));
 
 	return rows.map((row) => ({
-		...toAuthUser(row),
-		venueName: row.venueName
+		id: row.id,
+		email: row.email,
+		phone: row.phone,
+		joinedAt: formatWhen(row.createdAt) ?? '—',
+		lastSeenAt: formatWhen(row.lastSeenAt)
 	}));
 }
 
@@ -264,22 +224,6 @@ async function emailTaken(email: string): Promise<boolean> {
 	return Boolean(await findUserByEmail(email));
 }
 
-async function hashPassword(password: string): Promise<string> {
-	const salt = randomBytes(16);
-	const key = (await scrypt(password, salt, KEY_LEN)) as Buffer;
-	return `${salt.toString('hex')}:${key.toString('hex')}`;
-}
-
-async function verifyPassword(password: string, stored: string): Promise<boolean> {
-	const [saltHex, hashHex] = stored.split(':');
-	if (!saltHex || !hashHex) return false;
-	const expected = Buffer.from(hashHex, 'hex');
-	const salt = Buffer.from(saltHex, 'hex');
-	const key = (await scrypt(password, salt, expected.length)) as Buffer;
-	if (key.length !== expected.length) return false;
-	return timingSafeEqual(key, expected);
-}
-
 function hashToken(token: string): string {
 	return createHash('sha256').update(token).digest('hex');
 }
@@ -292,11 +236,12 @@ function toAuthUser(row: {
 	venueId: string | null;
 	emails: string[] | null;
 }): AuthUser {
+	const role: UserRole = row.role === 'editor' || row.role === 'superuser' ? row.role : 'admin';
 	return {
 		id: row.id,
 		email: row.email,
 		phone: row.phone,
-		role: row.role === 'editor' ? 'editor' : 'admin',
+		role,
 		venueId: row.venueId,
 		emails: row.emails ?? []
 	};

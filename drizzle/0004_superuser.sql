@@ -1,0 +1,3 @@
+-- Superuser accounts are seeded. Place owners stay role = admin.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'editor', 'superuser'));

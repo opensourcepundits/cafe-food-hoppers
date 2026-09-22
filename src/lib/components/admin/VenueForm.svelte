@@ -63,6 +63,7 @@
 		lighting: venue?.workInfo.lighting ?? [],
 		lightingNotes: venue?.workInfo.lighting_notes ?? '',
 		toilet: venue?.workInfo.toilet ?? '',
+		cellReception: venue?.workInfo.cell_reception ?? '',
 		ergonomic: venue?.workInfo.ergonomic_index ?? 'moderate',
 		ergonomicNotes: venue?.workInfo.ergonomic_notes ?? '',
 		laptopFriendly: venue?.workInfo.laptop_friendly ?? true,
@@ -109,6 +110,7 @@
 	let lighting = $state<LightingType[]>(seed.lighting);
 	let lightingNotes = $state(seed.lightingNotes);
 	let toilet = $state(seed.toilet);
+	let cellReception = $state(seed.cellReception);
 	let ergonomic = $state(seed.ergonomic);
 	let ergonomicNotes = $state(seed.ergonomicNotes);
 	let laptopFriendly = $state(seed.laptopFriendly);
@@ -164,6 +166,7 @@
 				lighting,
 				lighting_notes: lightingNotes,
 				toilet,
+				cell_reception: cellReception,
 				ergonomic_index: ergonomic,
 				ergonomic_notes: ergonomicNotes,
 				laptop_friendly: laptopFriendly,
@@ -602,6 +605,19 @@
 					class="{field} min-h-24"
 					bind:value={toilet}
 					placeholder="Customer toilets, code at the counter, accessible stall, or none."
+				></textarea>
+			</Field>
+		</div>
+	</details>
+
+	<details class="group" open>
+		<summary class={summary}>Cell reception {@render toggle()}</summary>
+		<div class="mt-4">
+			<Field label="Cell reception">
+				<textarea
+					class="{field} min-h-24"
+					bind:value={cellReception}
+					placeholder="Signal indoors, which networks drop, or whether you need to step outside."
 				></textarea>
 			</Field>
 		</div>

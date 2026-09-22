@@ -248,6 +248,13 @@
 		</section>
 
 		<section>
+			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Cell reception</h3>
+			<p class="mt-3 text-sm leading-6 text-muted">
+				{venue.workInfo.cell_reception || 'Cell reception is not listed yet.'}
+			</p>
+		</section>
+
+		<section>
 			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Ergonomic index</h3>
 			{#if ergoLabel(venue.workInfo.ergonomic_index)}
 				<p class="mt-3 text-sm">

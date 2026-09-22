@@ -28,6 +28,10 @@
 			data.filters.outletRatings.length +
 			data.filters.ergonomic.length
 	);
+	let filtersOpen = $state(activeFilters > 0);
+	$effect(() => {
+		if (activeFilters > 0) filtersOpen = true;
+	});
 	let locating = $state(false);
 	let locateError = $state('');
 	let confirmOpen = $state(false);
@@ -143,15 +147,16 @@
 		</button>
 	</div>
 
-	<details class="filter-bar group mt-4" open={activeFilters > 0}>
-		<summary
-			class="flex cursor-pointer list-none items-center justify-between font-mono text-[11px] uppercase tracking-[0.16em] text-muted sm:hidden [&::-webkit-details-marker]:hidden"
-		>
-			<span>Filters{activeFilters > 0 ? ` · ${activeFilters}` : ''}</span>
-			<span class="group-open:hidden">Show</span>
-			<span class="hidden group-open:inline">Hide</span>
-		</summary>
-		<div class="mt-4 flex flex-wrap gap-2 sm:mt-0">
+	<button
+		type="button"
+		class="mt-4 flex w-full items-center justify-between font-mono text-[11px] uppercase tracking-[0.16em] text-muted sm:hidden"
+		aria-expanded={filtersOpen}
+		onclick={() => (filtersOpen = !filtersOpen)}
+	>
+		<span>Filters{activeFilters > 0 ? ` · ${activeFilters}` : ''}</span>
+		<span>{filtersOpen ? 'Hide' : 'Show'}</span>
+	</button>
+	<div class="mt-4 flex-wrap gap-2 {filtersOpen ? 'flex' : 'hidden'} sm:mt-0 sm:flex">
 		<FilterChip name="work" checked={data.filters.workFriendly}>Work friendly</FilterChip>
 		<FilterChip name="notwork" checked={data.filters.notWorkFriendly}>Not work friendly</FilterChip>
 		<FilterChip name="wifi" checked={data.filters.wifi}>WiFi</FilterChip>
@@ -180,8 +185,7 @@
 		<FilterChip name="late" checked={data.filters.late}>Open till late</FilterChip>
 		<FilterChip name="ongoing" checked={data.filters.ongoingSpecials}>Ongoing specials</FilterChip>
 		<FilterChip name="upcoming" checked={data.filters.upcomingSpecials}>Upcoming specials</FilterChip>
-		</div>
-	</details>
+	</div>
 </form>
 
 <p class="mb-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">

@@ -3,6 +3,7 @@ import { deleteVenue, getVenueById, setVenueBadges, updateVenue } from '$lib/ser
 import { isUniqueViolation, payloadFromForm } from '$lib/server/venue-input';
 import { filesFromForm, persistVenueImages, removeImagePaths } from '$lib/server/storage';
 import { canDeleteVenue, isSuperuser, requireVenueEditor } from '$lib/server/access';
+import { datetimeLocalToIso } from '$lib/venue';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, locals }) => {
@@ -50,9 +51,13 @@ export const actions: Actions = {
 		if (!locals.user) redirect(303, '/admin/login');
 		if (!isSuperuser(locals.user)) error(403, 'Only a superuser can set verification badges.');
 		const data = await request.formData();
+		const testedAt = datetimeLocalToIso(String(data.get('wifiTestedAt') ?? ''));
 		const venue = await setVenueBadges(params.id, {
 			speedVerified: data.get('speedVerified') === '1',
-			noiseVerified: data.get('noiseVerified') === '1'
+			noiseVerified: data.get('noiseVerified') === '1',
+			wifiTestedAt: testedAt ? new Date(testedAt) : null,
+			wifiDownloadMbps: mbps(data.get('wifiDownloadMbps')),
+			wifiUploadMbps: mbps(data.get('wifiUploadMbps'))
 		});
 		if (!venue) error(404, 'Place not found.');
 		redirect(303, `/admin/venues/${params.id}?badges=1`);
@@ -68,3 +73,11 @@ export const actions: Actions = {
 		redirect(303, '/admin?deleted=1');
 	}
 };
+
+function mbps(value: FormDataEntryValue | null): number | null {
+	const text = String(value ?? '').trim();
+	if (!text) return null;
+	const number = Number(text);
+	if (!Number.isFinite(number) || number < 0 || number > 10000) return null;
+	return Math.round(number * 10) / 10;
+}

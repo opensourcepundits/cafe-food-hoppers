@@ -13,15 +13,22 @@
 	import MapEmbed from '$lib/components/MapEmbed.svelte';
 	import ImageCarousel from '$lib/components/ImageCarousel.svelte';
 	import {
-		dayHoursLabel,
-		formatSpecialWhen,
 		amenityLabels,
+		dayHoursLabel,
+		ergoLabel,
+		ergoPoints,
+		formatMauritiusWhen,
+		formatSpecialWhen,
 		hoursLabel,
+		lightingLabel,
 		mapsUrl,
 		mur,
 		noiseLabel,
 		orderedWeekdays,
 		outletLabel,
+		outletPoints,
+		outletRatingLabel,
+		outletRatingOf,
 		parseMapsPin,
 		verificationLabels,
 		weekdayLabel,
@@ -194,7 +201,13 @@
 				</li>
 				<li class="flex items-start gap-2">
 					<Plug class="mt-0.5 size-4 text-muted" />
-					<span>{outletLabel(venue.workInfo.outlet_access, venue.workInfo.outlets) ?? 'Outlets unknown'}</span>
+					<span>
+						{#if outletRatingOf(venue.workInfo)}
+							{outletRatingLabel(outletRatingOf(venue.workInfo))} · {outletPoints(outletRatingOf(venue.workInfo))} / 3
+						{:else}
+							{outletLabel(venue.workInfo.outlet_access, venue.workInfo.outlets) ?? 'Outlets unknown'}
+						{/if}
+					</span>
 				</li>
 				<li class="flex items-start gap-2">
 					<Volume2 class="mt-0.5 size-4 text-muted" />
@@ -208,6 +221,61 @@
 				{venue.workInfo.notes ?? ''}
 			</p>
 		</section>
+
+		{#if venue.workInfo.lighting?.length || venue.workInfo.lighting_notes}
+			<section>
+				<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Lighting</h3>
+				{#if venue.workInfo.lighting?.length}
+					<ul class="mt-4 flex flex-wrap gap-1.5">
+						{#each venue.workInfo.lighting as type (type)}
+							<li class="border border-line px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+								{lightingLabel(type)}
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				{#if venue.workInfo.lighting_notes}
+					<p class="mt-3 text-sm leading-6 text-muted">{venue.workInfo.lighting_notes}</p>
+				{/if}
+			</section>
+		{/if}
+
+		<section>
+			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Toilets</h3>
+			<p class="mt-3 text-sm leading-6 text-muted">
+				{venue.workInfo.toilet || 'Toilet situation is not listed yet.'}
+			</p>
+		</section>
+
+		<section>
+			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Ergonomic index</h3>
+			{#if ergoLabel(venue.workInfo.ergonomic_index)}
+				<p class="mt-3 text-sm">
+					{ergoLabel(venue.workInfo.ergonomic_index)} · {ergoPoints(venue.workInfo.ergonomic_index)} / 3
+				</p>
+			{/if}
+			<p class="mt-3 text-sm leading-6 text-muted">
+				{venue.workInfo.ergonomic_notes || 'Seating is not described yet.'}
+			</p>
+		</section>
+
+		{#if venue.wifiTestedAt || venue.wifiDownloadMbps !== null || venue.wifiUploadMbps !== null}
+			<section>
+				<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Wi-Fi test</h3>
+				<p class="mt-3 text-sm">
+					{#if venue.wifiTestedAt}
+						Tested {formatMauritiusWhen(venue.wifiTestedAt)}
+					{:else}
+						Test date not recorded
+					{/if}
+				</p>
+				<p class="mt-1 text-sm text-muted">
+					{#if venue.wifiDownloadMbps !== null}{venue.wifiDownloadMbps} Mbps down{/if}
+					{#if venue.wifiDownloadMbps !== null && venue.wifiUploadMbps !== null} · {/if}
+					{#if venue.wifiUploadMbps !== null}{venue.wifiUploadMbps} Mbps up{/if}
+				</p>
+			</section>
+		{/if}
 
 		<section>
 			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Hours</h3>

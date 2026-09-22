@@ -6,9 +6,11 @@ import type { VenueWrite } from '$lib/server/venue-input';
 import {
 	activeAnnouncements,
 	isWorkFriendly,
+	distanceMeters,
 	isOpenNow,
 	isOpenTillLate,
 	normalizeOpeningHours,
+	ZOOM_WALK_METERS,
 	ongoingSpecials,
 	upcomingSpecials,
 	type Announcement,
@@ -57,6 +59,9 @@ export function mapVenue(row: VenueRow): Venue {
 		createdBy: row.createdBy,
 		speedVerified: row.speedVerified,
 		noiseVerified: row.noiseVerified,
+		wifiTestedAt: row.wifiTestedAt ? new Date(row.wifiTestedAt).toISOString() : null,
+		wifiDownloadMbps: row.wifiDownloadMbps,
+		wifiUploadMbps: row.wifiUploadMbps,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt
 	};
@@ -78,8 +83,30 @@ export function parseFilters(url: URL): VenueFilters {
 		ocean: url.searchParams.get('ocean') === '1',
 		airConditioning: url.searchParams.get('ac') === '1',
 		indoor: url.searchParams.get('indoor') === '1',
-		outdoor: url.searchParams.get('outdoor') === '1'
+		outdoor: url.searchParams.get('outdoor') === '1',
+		lighting: (['natural', 'warm', 'bright', 'dim'] as const).filter(
+			(type) => url.searchParams.get(`light_${type}`) === '1'
+		),
+		outletRatings: (['scarce', 'moderate', 'abundant'] as const).filter(
+			(rating) => url.searchParams.get(`outlets_${rating}`) === '1'
+		),
+		ergonomic: (['low', 'moderate', 'high'] as const).filter(
+			(level) => url.searchParams.get(`ergo_${level}`) === '1'
+		),
+		zoom: url.searchParams.get('zoom') === '1',
+		lat: asCoord(url.searchParams.get('lat')),
+		lng: asCoord(url.searchParams.get('lng'))
 	};
+}
+
+function asCoord(value: string | null): number | null {
+	if (!value) return null;
+	const number = Number(value);
+	return Number.isFinite(number) ? number : null;
+}
+
+function workContains(fragment: string): SQL {
+	return sql`${venues.workInfo} @> ${sql.raw(`'${fragment}'::jsonb`)}`;
 }
 
 export async function listVenues(filters: VenueFilters): Promise<LiveVenue[]> {
@@ -115,6 +142,22 @@ export async function listVenues(filters: VenueFilters): Promise<LiveVenue[]> {
 
 	if (filters.outdoor) {
 		conditions.push(sql`${venues.workInfo} @> '{"outdoor_seating":true}'::jsonb`);
+	}
+
+	for (const type of filters.lighting) {
+		conditions.push(sql`${venues.workInfo}->'lighting' @> ${sql.raw(`'["${type}"]'::jsonb`)}`);
+	}
+
+	if (filters.outletRatings.length) {
+		conditions.push(
+			or(...filters.outletRatings.map((rating) => workContains(`{"outlet_rating":"${rating}"}`))) as SQL
+		);
+	}
+
+	if (filters.ergonomic.length) {
+		conditions.push(
+			or(...filters.ergonomic.map((level) => workContains(`{"ergonomic_index":"${level}"}`))) as SQL
+		);
 	}
 
 	if (filters.q) {
@@ -176,6 +219,29 @@ export async function listVenues(filters: VenueFilters): Promise<LiveVenue[]> {
 		mapped = mapped.filter((venue) => venue.upcomingSpecials.length > 0);
 	}
 
+	if (filters.zoom && filters.lat !== null && filters.lng !== null) {
+		const originLat = filters.lat;
+		const originLng = filters.lng;
+		mapped = mapped
+			.filter(
+				(venue) =>
+					venue.open &&
+					venue.lat !== null &&
+					venue.lng !== null &&
+					venue.workInfo.noise_level === 'quiet' &&
+					venue.workInfo.wifi === true &&
+					venue.workInfo.wifi_quality === 'fast'
+			)
+			.map((venue) => ({
+				...venue,
+				walkMeters: distanceMeters(originLat, originLng, venue.lat as number, venue.lng as number)
+			}))
+			.filter((venue) => (venue.walkMeters ?? Infinity) <= ZOOM_WALK_METERS)
+			.sort((a, b) => (a.walkMeters ?? 0) - (b.walkMeters ?? 0));
+	} else if (filters.zoom) {
+		mapped = [];
+	}
+
 	return mapped;
 }
 
@@ -217,7 +283,13 @@ export async function createVenue(input: VenueWrite, createdBy: string): Promise
 
 export async function setVenueBadges(
 	id: string,
-	badges: { speedVerified: boolean; noiseVerified: boolean }
+	badges: {
+		speedVerified: boolean;
+		noiseVerified: boolean;
+		wifiTestedAt: Date | null;
+		wifiDownloadMbps: number | null;
+		wifiUploadMbps: number | null;
+	}
 ): Promise<Venue | null> {
 	const [row] = await db
 		.update(venues)
@@ -269,6 +341,7 @@ export function withLiveState(venue: Venue): LiveVenue {
 		open: isOpenNow(venue.openingHours),
 		openLate: isOpenTillLate(venue.openingHours),
 		workFriendly: isWorkFriendly(venue.workInfo),
+		walkMeters: null,
 		alerts: activeAnnouncements(venue.announcements),
 		ongoingSpecials: ongoingSpecials(venue.specials),
 		upcomingSpecials: upcomingSpecials(venue.specials)

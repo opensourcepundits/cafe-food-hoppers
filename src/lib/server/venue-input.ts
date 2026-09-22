@@ -14,7 +14,10 @@ import {
 	type MenuItem,
 	type NoiseLevel,
 	type OpeningHours,
+	type ErgonomicIndex,
+	type LightingType,
 	type OutletAccess,
+	type OutletRating,
 	type Special,
 	type Venue,
 	type VenueImage,
@@ -22,11 +25,25 @@ import {
 	type WorkInfo
 } from '$lib/venue';
 
-export type VenueWrite = Omit<Venue, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'speedVerified' | 'noiseVerified'>;
+export type VenueWrite = Omit<
+	Venue,
+	| 'id'
+	| 'createdAt'
+	| 'updatedAt'
+	| 'createdBy'
+	| 'speedVerified'
+	| 'noiseVerified'
+	| 'wifiTestedAt'
+	| 'wifiDownloadMbps'
+	| 'wifiUploadMbps'
+>;
 
 const ANNOUNCEMENT_TYPES = new Set<AnnouncementType>(['event', 'closure', 'notice', 'alert']);
 const WIFI_QUALITY = new Set<WifiQuality>(['fast', 'ok', 'slow']);
 const OUTLET_ACCESS = new Set<OutletAccess>(['plenty', 'some', 'none']);
+const OUTLET_RATING = new Set<OutletRating>(['scarce', 'moderate', 'abundant']);
+const LIGHTING = new Set<LightingType>(['natural', 'warm', 'bright', 'dim']);
+const ERGONOMIC = new Set<ErgonomicIndex>(['low', 'moderate', 'high']);
 const NOISE = new Set<NoiseLevel>(['quiet', 'moderate', 'loud']);
 
 export function parseVenuePayload(raw: unknown): { ok: true; value: VenueWrite } | { ok: false; error: string } {
@@ -88,12 +105,18 @@ function parseWorkInfo(value: unknown): WorkInfo {
 	const outlets = Boolean(input.outlets);
 	const quality = asString(input.wifi_quality);
 	const access = asString(input.outlet_access);
+	const rating = asString(input.outlet_rating);
 	const noise = asString(input.noise_level);
+	const ergo = asString(input.ergonomic_index);
+	const lighting = Array.isArray(input.lighting)
+		? input.lighting.filter((item): item is LightingType => LIGHTING.has(item as LightingType))
+		: [];
 	return {
 		wifi,
 		wifi_quality: WIFI_QUALITY.has(quality as WifiQuality) ? (quality as WifiQuality) : undefined,
 		outlets,
 		outlet_access: OUTLET_ACCESS.has(access as OutletAccess) ? (access as OutletAccess) : undefined,
+		outlet_rating: OUTLET_RATING.has(rating as OutletRating) ? (rating as OutletRating) : undefined,
 		laptop_friendly: Boolean(input.laptop_friendly),
 		noise_level: NOISE.has(noise as NoiseLevel) ? (noise as NoiseLevel) : undefined,
 		nice_view: Boolean(input.nice_view),
@@ -101,6 +124,11 @@ function parseWorkInfo(value: unknown): WorkInfo {
 		air_conditioning: Boolean(input.air_conditioning),
 		indoor_seating: Boolean(input.indoor_seating),
 		outdoor_seating: Boolean(input.outdoor_seating),
+		lighting,
+		lighting_notes: asString(input.lighting_notes) || undefined,
+		toilet: asString(input.toilet) || undefined,
+		ergonomic_index: ERGONOMIC.has(ergo as ErgonomicIndex) ? (ergo as ErgonomicIndex) : undefined,
+		ergonomic_notes: asString(input.ergonomic_notes) || undefined,
 		notes: asString(input.notes) || undefined
 	};
 }

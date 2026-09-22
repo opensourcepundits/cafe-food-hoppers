@@ -83,6 +83,8 @@
 		'border border-line bg-paper px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted hover:border-ink hover:text-ink';
 	const btnGhostSm =
 		'border border-line bg-paper px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-muted hover:border-ink hover:text-ink';
+	const summary =
+		'flex cursor-pointer list-none items-center justify-between gap-4 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted [&::-webkit-details-marker]:hidden';
 
 	let slugTouched = $state(seed.slugTouched);
 	let name = $state(seed.name);
@@ -429,8 +431,13 @@
 >
 	<input type="hidden" name="payload" value={payload} />
 
-	<section>
-		<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Place</h3>
+	{#snippet toggle()}
+		<span class="font-mono text-[10px] tracking-[0.14em] group-open:hidden">Show</span>
+		<span class="hidden font-mono text-[10px] tracking-[0.14em] group-open:inline">Hide</span>
+	{/snippet}
+
+	<details class="group" open>
+		<summary class={summary}>Place {@render toggle()}</summary>
 		<div class="mt-4 grid gap-4 sm:grid-cols-2">
 			<Field label="Name">
 				<input
@@ -494,10 +501,10 @@
 			<input type="checkbox" bind:checked={isFeatured} />
 			Featured placement
 		</label>
-	</section>
+	</details>
 
-	<section>
-		<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Work setup</h3>
+	<details class="group" open>
+		<summary class={summary}>Work setup {@render toggle()}</summary>
 		<div class="mt-4 flex flex-wrap gap-4 text-sm">
 			<label class="flex items-center gap-2"><input type="checkbox" bind:checked={wifi} /> WiFi</label>
 			<label class="flex items-center gap-2"><input type="checkbox" bind:checked={outlets} /> Outlets</label>
@@ -540,13 +547,10 @@
 				<textarea class="{field} min-h-20" bind:value={workNotes}></textarea>
 			</Field>
 		</div>
-	</section>
+	</details>
 
-	<section>
-		<div class="flex items-end justify-between gap-4">
-			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Hours</h3>
-			<button type="button" class={btnGhost} onclick={copyMonday}>Copy Monday to all days</button>
-		</div>
+	<details class="group" open>
+		<summary class={summary}>Hours {@render toggle()}</summary>
 		<p class="mt-2 text-xs text-muted">
 			Add hours for a second sitting, for example 09:00–14:00 then 18:00–21:00.
 		</p>
@@ -588,13 +592,15 @@
 				</li>
 			{/each}
 		</ul>
-	</section>
+		<button type="button" class="{btnGhost} mt-3" onclick={copyMonday}>Copy Monday to all days</button>
+	</details>
 
-	<section>
-		<div class="flex items-end justify-between gap-4">
-			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Photos</h3>
-			<span class="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">{photoSlots} / 5</span>
-		</div>
+	<details class="group" open>
+		<summary class={summary}>
+			Photos
+			<span class="ml-auto font-mono text-[10px] tracking-[0.14em]">{photoSlots} / 5</span>
+			{@render toggle()}
+		</summary>
 		<p class="mt-2 text-xs text-muted">JPEG, PNG, WebP, or GIF. Max 5 images, 4 MB each. Stored under the place slug in the venue-images bucket.</p>
 		<div class="mt-4 max-w-xl">
 			<ImageCarousel images={gallery} alt={name || 'Place'} onremove={removeGallery} />
@@ -612,26 +618,31 @@
 				/>
 			</label>
 		{/if}
-	</section>
+	</details>
 
-	<section>
-		<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Contact</h3>
+	<details class="group" open>
+		<summary class={summary}>Contact {@render toggle()}</summary>
 		<div class="mt-4 grid gap-4 sm:grid-cols-2">
 			<Field label="Phone"><input class={field} bind:value={phone} /></Field>
 			<Field label="Instagram"><input class={field} bind:value={instagram} placeholder="handle" /></Field>
 			<Field label="Website"><input class={field} bind:value={website} /></Field>
 			<Field label="Email"><input class={field} type="email" bind:value={email} /></Field>
 		</div>
-	</section>
+	</details>
 
-	<section>
-		<div class="flex items-end justify-between gap-4">
-			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Menu</h3>
-			<button type="button" class={btnGhost} onclick={addCategory}>Add category</button>
-		</div>
-		<div class="mt-4 space-y-6">
+	<details class="group" open>
+		<summary class={summary}>Menu {@render toggle()}</summary>
+		<div class="mt-4 space-y-3">
 			{#each menu as category (category.key)}
-				<div class="border border-line p-4">
+				<details class="group/category border border-line" open>
+					<summary
+						class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted [&::-webkit-details-marker]:hidden"
+					>
+						{category.category || 'Category'}
+						<span class="group-open/category:hidden">Show</span>
+						<span class="hidden group-open/category:inline">Hide</span>
+					</summary>
+					<div class="border-t border-line p-4">
 					<div class="flex items-end gap-3">
 						<div class="flex-1">
 							<Field label="Category">
@@ -668,72 +679,92 @@
 						{/each}
 					</ul>
 					<button type="button" class="{btnGhost} mt-3" onclick={() => addItem(category.key)}>Add item</button>
-				</div>
+					</div>
+				</details>
 			{/each}
 		</div>
-	</section>
+		<button type="button" class="{btnGhost} mt-4" onclick={addCategory}>Add category</button>
+	</details>
 
-	<section>
-		<div class="flex items-end justify-between gap-4">
-			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Specials</h3>
-			<button type="button" class={btnGhost} onclick={addSpecial}>Add special</button>
-		</div>
+	<details class="group" open>
+		<summary class={summary}>Specials {@render toggle()}</summary>
 		<ul class="mt-4 space-y-3">
 			{#each specials as special (special.key)}
-				<li class="grid gap-3 border border-line p-4">
-					<input class={field} placeholder="Title" bind:value={special.title} />
-					<textarea class="{field} min-h-20" placeholder="Details" bind:value={special.body}></textarea>
-					<div class="grid gap-3 sm:grid-cols-2">
-						<Field label="Starts">
-							<input class={field} type="datetime-local" bind:value={special.startsLocal} />
-						</Field>
-						<Field label="Ends">
-							<input class={field} type="datetime-local" bind:value={special.endsLocal} />
-						</Field>
-					</div>
-					<button
-						type="button"
-						class="{btnGhost} w-fit"
-						onclick={() => (specials = specials.filter((item) => item.key !== special.key))}>Remove</button
-					>
+				<li>
+					<details class="group/item border border-line" open>
+						<summary
+							class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted [&::-webkit-details-marker]:hidden"
+						>
+							{special.title || 'Special'}
+							<span class="group-open/item:hidden">Show</span>
+							<span class="hidden group-open/item:inline">Hide</span>
+						</summary>
+						<div class="grid gap-3 border-t border-line p-4">
+							<input class={field} placeholder="Title" bind:value={special.title} />
+							<textarea class="{field} min-h-20" placeholder="Details" bind:value={special.body}></textarea>
+							<div class="grid gap-3 sm:grid-cols-2">
+								<Field label="Starts">
+									<input class={field} type="datetime-local" bind:value={special.startsLocal} />
+								</Field>
+								<Field label="Ends">
+									<input class={field} type="datetime-local" bind:value={special.endsLocal} />
+								</Field>
+							</div>
+							<button
+								type="button"
+								class="{btnGhost} w-fit"
+								onclick={() => (specials = specials.filter((item) => item.key !== special.key))}>Remove</button
+							>
+						</div>
+					</details>
 				</li>
 			{/each}
 		</ul>
-	</section>
+		<button type="button" class="{btnGhost} mt-4" onclick={addSpecial}>Add special</button>
+	</details>
 
-	<section>
-		<div class="flex items-end justify-between gap-4">
-			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Alerts</h3>
-			<button type="button" class={btnGhost} onclick={addAnnouncement}>Add alert</button>
-		</div>
+	<details class="group" open>
+		<summary class={summary}>Alerts {@render toggle()}</summary>
 		<ul class="mt-4 space-y-3">
 			{#each announcements as alert (alert.key)}
-				<li class="grid gap-3 border border-line p-4">
-					<select class={field} bind:value={alert.type}>
-						{#each ['notice', 'event', 'closure', 'alert'] as type (type)}
-							<option value={type}>{type}</option>
-						{/each}
-					</select>
-					<input class={field} placeholder="Title" bind:value={alert.title} />
-					<textarea class="{field} min-h-20" placeholder="Details" bind:value={alert.body}></textarea>
-					<div class="grid gap-3 sm:grid-cols-2">
-						<Field label="Starts">
-							<input class={field} type="datetime-local" bind:value={alert.startsLocal} />
-						</Field>
-						<Field label="Ends">
-							<input class={field} type="datetime-local" bind:value={alert.endsLocal} />
-						</Field>
-					</div>
-					<button
-						type="button"
-						class="{btnGhost} w-fit"
-						onclick={() => (announcements = announcements.filter((item) => item.key !== alert.key))}
-						>Remove</button
-					>
+				<li>
+					<details class="group/item border border-line" open>
+						<summary
+							class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted [&::-webkit-details-marker]:hidden"
+						>
+							{alert.title || 'Alert'}
+							<span class="group-open/item:hidden">Show</span>
+							<span class="hidden group-open/item:inline">Hide</span>
+						</summary>
+						<div class="grid gap-3 border-t border-line p-4">
+							<select class={field} bind:value={alert.type}>
+								{#each ['notice', 'event', 'closure', 'alert'] as type (type)}
+									<option value={type}>{type}</option>
+								{/each}
+							</select>
+							<input class={field} placeholder="Title" bind:value={alert.title} />
+							<textarea class="{field} min-h-20" placeholder="Details" bind:value={alert.body}></textarea>
+							<div class="grid gap-3 sm:grid-cols-2">
+								<Field label="Starts">
+									<input class={field} type="datetime-local" bind:value={alert.startsLocal} />
+								</Field>
+								<Field label="Ends">
+									<input class={field} type="datetime-local" bind:value={alert.endsLocal} />
+								</Field>
+							</div>
+							<button
+								type="button"
+								class="{btnGhost} w-fit"
+								onclick={() => (announcements = announcements.filter((item) => item.key !== alert.key))}
+								>Remove</button
+							>
+						</div>
+					</details>
 				</li>
 			{/each}
 		</ul>
-	</section>
+		<button type="button" class="{btnGhost} mt-4" onclick={addAnnouncement}>Add alert</button>
+	</details>
 
 	<div class="sticky bottom-0 flex gap-3 border-t border-line bg-paper py-4">
 		<button type="submit" class="border border-ink bg-ink px-5 py-2 text-sm text-paper">Save place</button>

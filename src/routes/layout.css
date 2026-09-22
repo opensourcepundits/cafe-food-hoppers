@@ -47,16 +47,6 @@ body {
 	}
 }
 
-@media (min-width: 640px) {
-	.filter-bar > summary {
-		display: none;
-	}
-
-	.filter-bar:not([open]) > :not(summary) {
-		display: flex;
-	}
-}
-
 .sr-only {
 	position: absolute;
 	width: 1px;

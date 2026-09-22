@@ -23,6 +23,9 @@ CREATE TABLE venues (
     created_by UUID,
     speed_verified BOOLEAN NOT NULL DEFAULT FALSE,
     noise_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    wifi_tested_at TIMESTAMPTZ,
+    wifi_download_mbps NUMERIC(6, 1),
+    wifi_upload_mbps NUMERIC(6, 1),
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

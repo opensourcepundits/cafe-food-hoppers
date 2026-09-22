@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { isoToDatetimeLocal } from '$lib/venue';
 	import VenueForm from '$lib/components/admin/VenueForm.svelte';
 	import Dialog from '$lib/components/admin/Dialog.svelte';
 	import BusyOverlay from '$lib/components/BusyOverlay.svelte';
@@ -25,10 +26,10 @@
 
 {#if data.canVerify}
 	<form method="POST" action="?/badges" class="mb-8 border border-line bg-paper-2 p-4">
-		<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Verification badges</h3>
-		<p class="mt-2 text-sm text-muted">Only a superuser can mark these. They show on the public place page.</p>
+		<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Verification</h3>
+		<p class="mt-2 text-sm text-muted">Only a superuser can mark badges and record a Wi-Fi speed test.</p>
 		{#if data.badgesSaved}
-			<p class="mt-3 text-sm">Badges saved.</p>
+			<p class="mt-3 text-sm">Verification saved.</p>
 		{/if}
 		<div class="mt-4 flex flex-wrap gap-4 text-sm">
 			<label class="flex items-center gap-2">
@@ -40,7 +41,40 @@
 				Decibel test verified
 			</label>
 		</div>
-		<button type="submit" class="mt-4 border border-ink bg-ink px-3 py-1.5 text-sm text-paper">Save badges</button>
+		<div class="mt-4 grid gap-4 sm:grid-cols-3">
+			<label class="block text-sm">
+				<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted">Wi-Fi tested</span>
+				<input
+					class="w-full border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink"
+					type="datetime-local"
+					name="wifiTestedAt"
+					value={isoToDatetimeLocal(data.venue.wifiTestedAt)}
+				/>
+			</label>
+			<label class="block text-sm">
+				<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted">Download Mbps</span>
+				<input
+					class="w-full border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink"
+					type="number"
+					name="wifiDownloadMbps"
+					min="0"
+					step="0.1"
+					value={data.venue.wifiDownloadMbps ?? ''}
+				/>
+			</label>
+			<label class="block text-sm">
+				<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted">Upload Mbps</span>
+				<input
+					class="w-full border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink"
+					type="number"
+					name="wifiUploadMbps"
+					min="0"
+					step="0.1"
+					value={data.venue.wifiUploadMbps ?? ''}
+				/>
+			</label>
+		</div>
+		<button type="submit" class="mt-4 border border-ink bg-ink px-3 py-1.5 text-sm text-paper">Save verification</button>
 	</form>
 {/if}
 

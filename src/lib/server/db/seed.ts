@@ -557,8 +557,74 @@ async function seed() {
 		'grand-baie-social': { close_to_ocean: true, outdoor_seating: true },
 		'ebene-desk': { air_conditioning: true, indoor_seating: true }
 	};
+	const placeDetails: Record<string, Partial<(typeof seedVenues)[number]['workInfo']>> = {
+		bloom: {
+			lighting: ['natural', 'warm'],
+			lighting_notes: 'Big windows on the street side. Warmer lamps after 16:00.',
+			toilet: 'One customer toilet downstairs. Ask at the bar for the code.',
+			outlet_rating: 'abundant',
+			ergonomic_index: 'high',
+			ergonomic_notes: 'Upholstered chairs and a few counter stools. Laptop tables are the right height.'
+		},
+		'the-workshop': {
+			lighting: ['bright', 'natural'],
+			toilet: 'Toilets on the coworking floor. No code.',
+			outlet_rating: 'abundant',
+			ergonomic_index: 'high',
+			ergonomic_notes: 'Task chairs at the standing desks. Cafe chairs are firmer.'
+		},
+		'le-caudan-roastery': {
+			lighting: ['natural'],
+			toilet: 'Shared mall toilets, two minutes walk. None inside the roastery.',
+			outlet_rating: 'moderate',
+			ergonomic_index: 'moderate',
+			ergonomic_notes: 'Wooden chairs. Fine for an hour, less so for a full afternoon.'
+		},
+		'tamarin-coffee-lab': {
+			lighting: ['warm', 'dim'],
+			toilet: 'Single toilet at the back. Customers only.',
+			outlet_rating: 'scarce',
+			ergonomic_index: 'low',
+			ergonomic_notes: 'Low stools and a window bench. Not built for long sitting.'
+		},
+		'west-coast-espresso': {
+			lighting: ['natural', 'bright'],
+			toilet: 'No customer toilet.',
+			outlet_rating: 'scarce',
+			ergonomic_index: 'low',
+			ergonomic_notes: 'Terrace stools. Short visits only.'
+		},
+		'port-louis-grounds': {
+			lighting: ['bright'],
+			toilet: 'Two stalls inside. Step-free from the street.',
+			outlet_rating: 'abundant',
+			ergonomic_index: 'moderate',
+			ergonomic_notes: 'Padded banquettes along the wall. Tables are a bit low.'
+		},
+		'moka-mill': {
+			lighting: ['natural', 'warm'],
+			toilet: 'Garden toilet, not accessible. Key at the counter.',
+			outlet_rating: 'moderate',
+			ergonomic_index: 'moderate',
+			ergonomic_notes: 'Armchairs indoors. Garden benches have no back support.'
+		},
+		'grand-baie-social': {
+			lighting: ['dim', 'warm'],
+			toilet: 'Toilets past the bar. Busy on Saturday nights.',
+			outlet_rating: 'scarce',
+			ergonomic_index: 'low',
+			ergonomic_notes: 'Bar stools and lounge sofas. Neither is a work chair.'
+		},
+		'ebene-desk': {
+			lighting: ['bright', 'natural'],
+			toilet: 'Toilets in the back room, included with cafe seating.',
+			outlet_rating: 'abundant',
+			ergonomic_index: 'high',
+			ergonomic_notes: 'Office chairs in the back room. Cafe side is standard wooden chairs.'
+		}
+	};
 	for (const venue of seedVenues) {
-		venue.workInfo = { ...venue.workInfo, ...placeFlags[venue.slug] };
+		venue.workInfo = { ...venue.workInfo, ...placeFlags[venue.slug], ...placeDetails[venue.slug] };
 	}
 
 	await db.delete(venues);

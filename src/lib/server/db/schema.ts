@@ -51,6 +51,9 @@ export const venues = pgTable(
 		createdBy: uuid('created_by').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
 		speedVerified: boolean('speed_verified').notNull().default(false),
 		noiseVerified: boolean('noise_verified').notNull().default(false),
+		wifiTestedAt: timestamp('wifi_tested_at', { withTimezone: true }),
+		wifiDownloadMbps: numeric('wifi_download_mbps', { precision: 6, scale: 1, mode: 'number' }),
+		wifiUploadMbps: numeric('wifi_upload_mbps', { precision: 6, scale: 1, mode: 'number' }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},

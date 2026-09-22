@@ -13,9 +13,13 @@
 		mapsEmbedUrl,
 		normalizeDayHours,
 		normalizeOpeningHours,
+		LIGHTING_TYPES,
 		orderedWeekdays,
+		outletRatingOf,
 		parseMapsPin,
 		slugify,
+		type LightingType,
+		type OutletRating,
 		weekdayLabel,
 		type Announcement,
 		type DayHours,
@@ -55,7 +59,12 @@
 		wifi: venue?.workInfo.wifi ?? true,
 		wifiQuality: venue?.workInfo.wifi_quality ?? 'ok',
 		outlets: venue?.workInfo.outlets ?? true,
-		outletAccess: venue?.workInfo.outlet_access ?? 'some',
+		outletRating: (outletRatingOf(venue?.workInfo ?? {}) ?? 'moderate') as OutletRating,
+		lighting: venue?.workInfo.lighting ?? [],
+		lightingNotes: venue?.workInfo.lighting_notes ?? '',
+		toilet: venue?.workInfo.toilet ?? '',
+		ergonomic: venue?.workInfo.ergonomic_index ?? 'moderate',
+		ergonomicNotes: venue?.workInfo.ergonomic_notes ?? '',
 		laptopFriendly: venue?.workInfo.laptop_friendly ?? true,
 		noiseLevel: venue?.workInfo.noise_level ?? 'moderate',
 		niceView: venue?.workInfo.nice_view ?? false,
@@ -96,7 +105,12 @@
 	let wifi = $state(seed.wifi);
 	let wifiQuality = $state(seed.wifiQuality);
 	let outlets = $state(seed.outlets);
-	let outletAccess = $state(seed.outletAccess);
+	let outletRating = $state<OutletRating>(seed.outletRating);
+	let lighting = $state<LightingType[]>(seed.lighting);
+	let lightingNotes = $state(seed.lightingNotes);
+	let toilet = $state(seed.toilet);
+	let ergonomic = $state(seed.ergonomic);
+	let ergonomicNotes = $state(seed.ergonomicNotes);
 	let laptopFriendly = $state(seed.laptopFriendly);
 	let noiseLevel = $state(seed.noiseLevel);
 	let niceView = $state(seed.niceView);
@@ -145,7 +159,13 @@
 				wifi,
 				wifi_quality: wifiQuality,
 				outlets,
-				outlet_access: outletAccess,
+				outlet_access: outletRating === 'abundant' ? 'plenty' : outletRating === 'scarce' ? 'none' : 'some',
+				outlet_rating: outletRating,
+				lighting,
+				lighting_notes: lightingNotes,
+				toilet,
+				ergonomic_index: ergonomic,
+				ergonomic_notes: ergonomicNotes,
 				laptop_friendly: laptopFriendly,
 				noise_level: noiseLevel,
 				nice_view: niceView,
@@ -527,11 +547,11 @@
 					<option value="slow">Slow</option>
 				</select>
 			</Field>
-			<Field label="Outlet access">
-				<select class={field} bind:value={outletAccess}>
-					<option value="plenty">Plenty</option>
-					<option value="some">Some</option>
-					<option value="none">None</option>
+			<Field label="Outlets">
+				<select class={field} bind:value={outletRating}>
+					<option value="scarce">Scarce · 1</option>
+					<option value="moderate">Moderate · 2</option>
+					<option value="abundant">Abundant · 3</option>
 				</select>
 			</Field>
 			<Field label="Noise">
@@ -546,6 +566,66 @@
 			<Field label="Notes">
 				<textarea class="{field} min-h-20" bind:value={workNotes}></textarea>
 			</Field>
+		</div>
+	</details>
+
+	<details class="group" open>
+		<summary class={summary}>Lighting {@render toggle()}</summary>
+		<div class="mt-4 flex flex-wrap gap-4 text-sm">
+			{#each LIGHTING_TYPES as type (type)}
+				<label class="flex items-center gap-2">
+					<input
+						type="checkbox"
+						checked={lighting.includes(type)}
+						onchange={(event) => {
+							lighting = event.currentTarget.checked
+								? [...lighting, type]
+								: lighting.filter((item) => item !== type);
+						}}
+					/>
+					{type === 'natural' ? 'Natural' : type === 'warm' ? 'Warm' : type === 'bright' ? 'Bright' : 'Dim'}
+				</label>
+			{/each}
+		</div>
+		<div class="mt-4">
+			<Field label="Lighting notes">
+				<textarea class="{field} min-h-20" bind:value={lightingNotes}></textarea>
+			</Field>
+		</div>
+	</details>
+
+	<details class="group" open>
+		<summary class={summary}>Toilets {@render toggle()}</summary>
+		<div class="mt-4">
+			<Field label="Toilet situation">
+				<textarea
+					class="{field} min-h-24"
+					bind:value={toilet}
+					placeholder="Customer toilets, code at the counter, accessible stall, or none."
+				></textarea>
+			</Field>
+		</div>
+	</details>
+
+	<details class="group" open>
+		<summary class={summary}>Ergonomic index {@render toggle()}</summary>
+		<div class="mt-4 grid gap-4 sm:grid-cols-2">
+			<Field label="Index">
+				<select class={field} bind:value={ergonomic}>
+					<option value="low">Low · 1</option>
+					<option value="moderate">Moderate · 2</option>
+					<option value="high">High · 3</option>
+				</select>
+			</Field>
+			<div class="sm:col-span-2">
+				<Field label="Chairs and seating">
+					<textarea
+						class="{field} min-h-24"
+						bind:value={ergonomicNotes}
+						placeholder="Chair type, table height, how long you can sit comfortably."
+					></textarea>
+				</Field>
+			</div>
 		</div>
 	</details>
 

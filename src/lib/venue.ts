@@ -17,13 +17,24 @@ export type Weekday = (typeof WEEKDAYS)[number];
 
 export type WifiQuality = 'fast' | 'ok' | 'slow';
 export type OutletAccess = 'plenty' | 'some' | 'none';
+export type OutletRating = 'scarce' | 'moderate' | 'abundant';
 export type NoiseLevel = 'quiet' | 'moderate' | 'loud';
+export type LightingType = 'natural' | 'warm' | 'bright' | 'dim';
+export type ErgonomicIndex = 'low' | 'moderate' | 'high';
+
+export const LIGHTING_TYPES: LightingType[] = ['natural', 'warm', 'bright', 'dim'];
+export const OUTLET_RATINGS: OutletRating[] = ['scarce', 'moderate', 'abundant'];
+export const ERGONOMIC_LEVELS: ErgonomicIndex[] = ['low', 'moderate', 'high'];
+
+/** 5 minutes at a typical walking pace. */
+export const ZOOM_WALK_METERS = 400;
 
 export type WorkInfo = {
 	wifi?: boolean;
 	wifi_quality?: WifiQuality;
 	outlets?: boolean;
 	outlet_access?: OutletAccess;
+	outlet_rating?: OutletRating;
 	laptop_friendly?: boolean;
 	noise_level?: NoiseLevel;
 	nice_view?: boolean;
@@ -31,6 +42,11 @@ export type WorkInfo = {
 	air_conditioning?: boolean;
 	indoor_seating?: boolean;
 	outdoor_seating?: boolean;
+	lighting?: LightingType[];
+	lighting_notes?: string;
+	toilet?: string;
+	ergonomic_index?: ErgonomicIndex;
+	ergonomic_notes?: string;
 	notes?: string;
 };
 
@@ -125,6 +141,9 @@ export type Venue = {
 	createdBy: string | null;
 	speedVerified: boolean;
 	noiseVerified: boolean;
+	wifiTestedAt: string | null;
+	wifiDownloadMbps: number | null;
+	wifiUploadMbps: number | null;
 	createdAt: Date | null;
 	updatedAt: Date | null;
 };
@@ -133,6 +152,7 @@ export type LiveVenue = Venue & {
 	open: boolean;
 	openLate: boolean;
 	workFriendly: boolean;
+	walkMeters: number | null;
 	alerts: Announcement[];
 	ongoingSpecials: Special[];
 	upcomingSpecials: Special[];
@@ -154,6 +174,12 @@ export type VenueFilters = {
 	airConditioning: boolean;
 	indoor: boolean;
 	outdoor: boolean;
+	lighting: LightingType[];
+	outletRatings: OutletRating[];
+	ergonomic: ErgonomicIndex[];
+	zoom: boolean;
+	lat: number | null;
+	lng: number | null;
 };
 
 const WEEKDAY_LABEL: Record<Weekday, string> = {
@@ -379,6 +405,78 @@ export function noiseLabel(level: NoiseLevel | undefined): string | null {
 	if (level === 'quiet') return 'Quiet';
 	if (level === 'moderate') return 'Moderate';
 	return 'Loud';
+}
+
+export function lightingLabel(type: LightingType): string {
+	if (type === 'natural') return 'Natural light';
+	if (type === 'warm') return 'Warm light';
+	if (type === 'bright') return 'Bright light';
+	return 'Dim light';
+}
+
+export function outletRatingOf(info: WorkInfo): OutletRating | null {
+	if (info.outlet_rating) return info.outlet_rating;
+	if (info.outlet_access === 'plenty') return 'abundant';
+	if (info.outlet_access === 'none') return 'scarce';
+	if (info.outlet_access === 'some' || info.outlets) return 'moderate';
+	return null;
+}
+
+export function outletPoints(rating: OutletRating | null): number | null {
+	if (rating === 'scarce') return 1;
+	if (rating === 'moderate') return 2;
+	if (rating === 'abundant') return 3;
+	return null;
+}
+
+export function outletRatingLabel(rating: OutletRating | null): string | null {
+	if (rating === 'scarce') return 'Scarce outlets';
+	if (rating === 'moderate') return 'Moderate outlets';
+	if (rating === 'abundant') return 'Abundant outlets';
+	return null;
+}
+
+export function ergoPoints(index: ErgonomicIndex | undefined): number | null {
+	if (index === 'low') return 1;
+	if (index === 'moderate') return 2;
+	if (index === 'high') return 3;
+	return null;
+}
+
+export function ergoLabel(index: ErgonomicIndex | undefined): string | null {
+	if (index === 'low') return 'Ergonomic · Low';
+	if (index === 'moderate') return 'Ergonomic · Moderate';
+	if (index === 'high') return 'Ergonomic · High';
+	return null;
+}
+
+export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+	const toRad = (value: number) => (value * Math.PI) / 180;
+	const earth = 6371000;
+	const dLat = toRad(lat2 - lat1);
+	const dLng = toRad(lng2 - lng1);
+	const a =
+		Math.sin(dLat / 2) ** 2 +
+		Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+	return 2 * earth * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function walkMinutes(meters: number): number {
+	return Math.max(1, Math.round(meters / 80));
+}
+
+export function formatMauritiusWhen(value: Date | string | null | undefined): string | null {
+	if (!value) return null;
+	const date = value instanceof Date ? value : new Date(value);
+	if (Number.isNaN(date.getTime())) return null;
+	return new Intl.DateTimeFormat('en-GB', {
+		timeZone: MAURITIUS_TZ,
+		day: 'numeric',
+		month: 'short',
+		year: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit'
+	}).format(date);
 }
 
 export function outletLabel(access: OutletAccess | undefined, outlets: boolean | undefined): string | null {

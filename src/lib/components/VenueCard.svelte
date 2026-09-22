@@ -1,7 +1,19 @@
 <script lang="ts">
 	import { formatSpecialWhen, type LiveVenue } from '$lib/venue';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import { amenityLabels, hoursLabel, noiseLabel, outletLabel, verificationLabels, wifiLabel } from '$lib/venue';
+	import {
+		amenityLabels,
+		ergoLabel,
+		hoursLabel,
+		lightingLabel,
+		noiseLabel,
+		outletLabel,
+		outletRatingLabel,
+		outletRatingOf,
+		verificationLabels,
+		walkMinutes,
+		wifiLabel
+	} from '$lib/venue';
 
 	let { venue }: { venue: LiveVenue } = $props();
 
@@ -9,10 +21,14 @@
 		[
 			venue.workFriendly ? 'Work friendly' : 'Not work friendly',
 			wifiLabel(venue.workInfo),
-			outletLabel(venue.workInfo.outlet_access, venue.workInfo.outlets),
+			outletRatingLabel(outletRatingOf(venue.workInfo)) ??
+				outletLabel(venue.workInfo.outlet_access, venue.workInfo.outlets),
 			noiseLabel(venue.workInfo.noise_level),
 			venue.openLate ? 'Open till late' : null,
-			...amenityLabels(venue.workInfo)
+			ergoLabel(venue.workInfo.ergonomic_index),
+			...(venue.workInfo.lighting ?? []).map((type) => lightingLabel(type)),
+			...amenityLabels(venue.workInfo),
+			venue.walkMeters !== null ? `${walkMinutes(venue.walkMeters)} min walk` : null
 		].filter((value): value is string => Boolean(value))
 	);
 

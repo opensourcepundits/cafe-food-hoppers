@@ -61,4 +61,8 @@ EXCEPTION
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_venues_created_by ON venues (created_by);
+
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS wifi_tested_at timestamptz;
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS wifi_download_mbps numeric(6, 1);
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS wifi_upload_mbps numeric(6, 1);
 `;

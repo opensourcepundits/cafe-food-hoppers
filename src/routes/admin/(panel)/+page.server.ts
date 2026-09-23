@@ -17,7 +17,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		venues: filtered.map((venue) => ({ ...venue, editable: canEditVenue(locals.user, venue) })),
 		q,
 		total: venues.length,
-		deleted: url.searchParams.get('deleted') === '1'
+		deleted: url.searchParams.get('deleted') === '1',
+		scoped: locals.user?.role === 'manager' || locals.user?.role === 'editor'
 	};
 };
 

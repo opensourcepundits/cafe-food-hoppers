@@ -20,6 +20,7 @@ export function canCreateVenue(user: AuthUser | null): boolean {
 export function canEditVenue(user: AuthUser | null, venue: VenueAccess): boolean {
 	if (!user) return false;
 	if (user.role === 'superuser' || user.role === 'admin') return true;
+	if (user.role === 'manager' && user.venueIds.includes(venue.id)) return true;
 	if (user.role === 'editor' && user.venueId === venue.id) return true;
 	return user.canEdit && venue.createdBy === user.id;
 }

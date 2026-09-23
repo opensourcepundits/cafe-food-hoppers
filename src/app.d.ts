@@ -9,10 +9,11 @@ declare global {
 				id: string;
 				email: string;
 				phone: string | null;
-				role: 'user' | 'admin' | 'editor' | 'superuser';
+				role: 'user' | 'admin' | 'editor' | 'manager' | 'superuser';
 				canCreate: boolean;
 				canEdit: boolean;
 				venueId: string | null;
+				venueIds: string[];
 				emails: string[];
 			} | null;
 		}

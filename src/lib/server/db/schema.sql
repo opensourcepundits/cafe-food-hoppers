@@ -56,7 +56,7 @@ CREATE TABLE users (
     email TEXT UNIQUE NOT NULL,
     phone TEXT UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'editor', 'superuser')),
+    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'editor', 'manager', 'superuser')),
     can_create BOOLEAN NOT NULL DEFAULT FALSE,
     can_edit BOOLEAN NOT NULL DEFAULT FALSE,
     venue_id UUID REFERENCES venues(id) ON DELETE SET NULL,
@@ -76,7 +76,14 @@ CREATE TABLE sessions (
 
 CREATE INDEX idx_sessions_user ON sessions (user_id);
 CREATE INDEX idx_sessions_expires ON sessions (expires_at);
+CREATE TABLE user_venues (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    venue_id UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, venue_id)
+);
+
 CREATE INDEX idx_users_venue ON users (venue_id);
+CREATE INDEX idx_user_venues_venue ON user_venues (venue_id);
 CREATE INDEX idx_users_emails ON users USING gin (emails);
 CREATE INDEX idx_venues_created_by ON venues (created_by);
 

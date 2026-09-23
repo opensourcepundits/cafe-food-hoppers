@@ -1,14 +1,15 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { redirect, type Cookies } from '@sveltejs/kit';
-import { and, desc, eq, gt, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, ne, or, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { sessions, users, venues, type UserRow } from '$lib/server/db/schema';
+import { sessions, userVenues, users, venues, type UserRow } from '$lib/server/db/schema';
 import { hashPassword, verifyPassword } from '$lib/server/password';
 
 export const SESSION_COOKIE = 'place_session';
 const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
 
-export type UserRole = 'user' | 'admin' | 'editor' | 'superuser';
+export type UserRole = 'user' | 'admin' | 'editor' | 'manager' | 'superuser';
+export type AccountKind = 'standard' | 'shop' | 'placement';
 
 export type AuthUser = {
 	id: string;
@@ -18,6 +19,7 @@ export type AuthUser = {
 	canCreate: boolean;
 	canEdit: boolean;
 	venueId: string | null;
+	venueIds: string[];
 	emails: string[];
 };
 
@@ -34,8 +36,11 @@ export type RegisteredAccount = {
 	phone: string | null;
 	joinedAt: string;
 	lastSeenAt: string | null;
+	kind: AccountKind;
 	canCreate: boolean;
 	canEdit: boolean;
+	venueId: string | null;
+	managedVenueIds: string[];
 	places: CreatedPlace[];
 };
 
@@ -79,7 +84,7 @@ export async function readSession(cookies: Cookies): Promise<AuthUser | null> {
 		return null;
 	}
 
-	return toAuthUser(row);
+	return toAuthUser(row, await assignedVenueIds(row.id));
 }
 
 export function hasAdminSession(user: AuthUser | null): boolean {
@@ -149,7 +154,7 @@ export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
 		from ${sessions}
 		where ${sessions.userId} = ${users.id}
 	)`;
-	const [people, places] = await Promise.all([
+	const [people, places, links] = await Promise.all([
 		db
 			.select({
 				id: users.id,
@@ -158,6 +163,7 @@ export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
 				role: users.role,
 				canCreate: users.canCreate,
 				canEdit: users.canEdit,
+				venueId: users.venueId,
 				createdAt: users.createdAt,
 				lastSeenAt
 			})
@@ -173,7 +179,8 @@ export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
 				createdBy: venues.createdBy
 			})
 			.from(venues)
-			.orderBy(venues.name)
+			.orderBy(venues.name),
+		db.select({ userId: userVenues.userId, venueId: userVenues.venueId }).from(userVenues)
 	]);
 
 	const byCreator = new Map<string, CreatedPlace[]>();
@@ -184,16 +191,27 @@ export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
 		byCreator.set(place.createdBy, list);
 	}
 
+	const managedByUser = new Map<string, string[]>();
+	for (const link of links) {
+		const list = managedByUser.get(link.userId) ?? [];
+		list.push(link.venueId);
+		managedByUser.set(link.userId, list);
+	}
+
 	return people.map((row) => {
 		const legacyAdmin = row.role === 'admin';
+		const kind: AccountKind = row.role === 'manager' ? 'shop' : row.role === 'editor' ? 'placement' : 'standard';
 		return {
 			id: row.id,
 			email: row.email,
 			phone: row.phone,
 			joinedAt: formatWhen(row.createdAt) ?? '—',
 			lastSeenAt: formatWhen(row.lastSeenAt),
+			kind,
 			canCreate: legacyAdmin || row.canCreate,
 			canEdit: legacyAdmin || row.canEdit,
+			venueId: row.venueId,
+			managedVenueIds: managedByUser.get(row.id) ?? [],
 			places: byCreator.get(row.id) ?? []
 		};
 	});
@@ -201,7 +219,7 @@ export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
 
 export async function setAccountAccess(
 	userId: string,
-	access: { canCreate: boolean; canEdit: boolean }
+	access: { canCreate: boolean; canEdit: boolean; kind: AccountKind; venueId: string | null; venueIds: string[] }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
 	const [row] = await db
 		.select({ id: users.id, role: users.role })
@@ -211,15 +229,37 @@ export async function setAccountAccess(
 	if (!row) return { ok: false, error: 'That account was not found.' };
 	if (row.role === 'superuser') return { ok: false, error: 'Superuser access is not changed here.' };
 
-	await db
-		.update(users)
-		.set({
-			canCreate: access.canCreate,
-			canEdit: access.canEdit,
-			role: row.role === 'admin' ? 'user' : row.role,
-			updatedAt: new Date()
-		})
-		.where(eq(users.id, userId));
+	const venueIds = [...new Set(access.venueIds)];
+	const placementId = access.venueId;
+	if (access.kind === 'placement' && !placementId) {
+		return { ok: false, error: 'Choose the one placement this account can edit.' };
+	}
+	const requested = access.kind === 'placement' && placementId ? [placementId] : access.kind === 'shop' ? venueIds : [];
+	if (requested.length) {
+		const found = await db.select({ id: venues.id }).from(venues).where(inArray(venues.id, requested));
+		if (found.length !== requested.length) return { ok: false, error: 'One of those places no longer exists.' };
+	}
+
+	const shop = access.kind === 'shop';
+	const placement = access.kind === 'placement';
+	const role: UserRole = shop ? 'manager' : placement ? 'editor' : row.role === 'admin' || row.role === 'manager' || row.role === 'editor' ? 'user' : row.role;
+
+	await db.transaction(async (tx) => {
+		await tx
+			.update(users)
+			.set({
+				canCreate: shop || placement ? false : access.canCreate,
+				canEdit: shop || placement ? false : access.canEdit,
+				role,
+				venueId: placement ? placementId : null,
+				updatedAt: new Date()
+			})
+			.where(eq(users.id, userId));
+		await tx.delete(userVenues).where(eq(userVenues.userId, userId));
+		if (shop && venueIds.length) {
+			await tx.insert(userVenues).values(venueIds.map((venueId) => ({ userId, venueId })));
+		}
+	});
 	return { ok: true };
 }
 
@@ -304,9 +344,13 @@ function toAuthUser(row: {
 	canEdit: boolean | null;
 	venueId: string | null;
 	emails: string[] | null;
-}): AuthUser {
+}, venueIds: string[] = []): AuthUser {
 	const role: UserRole =
-		row.role === 'editor' || row.role === 'superuser' || row.role === 'admin' || row.role === 'user'
+		row.role === 'editor' ||
+		row.role === 'manager' ||
+		row.role === 'superuser' ||
+		row.role === 'admin' ||
+		row.role === 'user'
 			? row.role
 			: 'user';
 	return {
@@ -317,6 +361,15 @@ function toAuthUser(row: {
 		canCreate: Boolean(row.canCreate),
 		canEdit: Boolean(row.canEdit),
 		venueId: row.venueId,
+		venueIds,
 		emails: row.emails ?? []
 	};
+}
+
+async function assignedVenueIds(userId: string): Promise<string[]> {
+	const rows = await db
+		.select({ venueId: userVenues.venueId })
+		.from(userVenues)
+		.where(eq(userVenues.userId, userId));
+	return rows.map((row) => row.venueId);
 }

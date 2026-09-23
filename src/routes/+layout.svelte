@@ -3,9 +3,12 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
-	let { children } = $props();
+	let { children, data } = $props();
 
 	const path = $derived(page.url.pathname);
+	const signedInName = $derived(
+		data.user?.firstName?.trim() || data.user?.email.split('@')[0] || ''
+	);
 </script>
 
 <svelte:head>
@@ -40,6 +43,21 @@
 				>
 					Specials
 				</a>
+				{#if signedInName}
+					<a
+						href="/admin"
+						class="border-b border-transparent pb-0.5 normal-case tracking-normal text-ink"
+					>
+						{signedInName}
+					</a>
+				{:else}
+					<a
+						href="/login"
+						class="border-b pb-0.5 {path === '/login' ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}"
+					>
+						Login
+					</a>
+				{/if}
 			</nav>
 		</div>
 	</header>

@@ -10,8 +10,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		path === '/admin/login/' ||
 		path === '/admin/register' ||
 		path === '/admin/register/';
+	const isLogin = path === '/login' || path === '/login/';
 
-	if (isAdminApp || event.cookies.get(SESSION_COOKIE)) await ensureSchema();
+	if (isAdminApp || isLogin || event.cookies.get(SESSION_COOKIE)) await ensureSchema();
 
 	const user = await readSession(event.cookies);
 	event.locals.user = user;
@@ -19,7 +20,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	if (isAdminApp && !isPublicAdmin && !event.locals.admin) {
 		const next = path === '/admin' ? '/admin' : path;
-		redirect(303, `/admin/login?next=${encodeURIComponent(next)}`);
+		redirect(303, `/login?next=${encodeURIComponent(next)}`);
 	}
 
 	return resolve(event);

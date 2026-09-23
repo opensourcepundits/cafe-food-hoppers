@@ -78,6 +78,7 @@ export const users = pgTable(
 		email: text('email').notNull().unique(),
 		phone: text('phone').unique(),
 		passwordHash: text('password_hash').notNull(),
+		firstName: text('first_name'),
 		role: text('role').$type<'user' | 'admin' | 'editor' | 'manager' | 'superuser'>().notNull().default('user'),
 		canCreate: boolean('can_create').notNull().default(false),
 		canEdit: boolean('can_edit').notNull().default(false),
@@ -101,6 +102,22 @@ export const userVenues = pgTable(
 			.references(() => venues.id, { onDelete: 'cascade' })
 	},
 	(table) => [primaryKey({ columns: [table.userId, table.venueId] }), index('idx_user_venues_venue').on(table.venueId)]
+);
+
+export const comments = pgTable(
+	'comments',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		venueId: uuid('venue_id')
+			.notNull()
+			.references(() => venues.id, { onDelete: 'cascade' }),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		body: text('body').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [index('idx_comments_venue').on(table.venueId, table.createdAt)]
 );
 
 export const sessions = pgTable(

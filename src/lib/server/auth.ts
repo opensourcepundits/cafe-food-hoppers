@@ -18,6 +18,7 @@ export type AuthUser = {
 	role: UserRole;
 	canCreate: boolean;
 	canEdit: boolean;
+	firstName: string | null;
 	venueId: string | null;
 	venueIds: string[];
 	emails: string[];
@@ -70,6 +71,7 @@ export async function readSession(cookies: Cookies): Promise<AuthUser | null> {
 			role: users.role,
 			canCreate: users.canCreate,
 			canEdit: users.canEdit,
+			firstName: users.firstName,
 			venueId: users.venueId,
 			emails: users.emails,
 			expiresAt: sessions.expiresAt
@@ -92,18 +94,23 @@ export function hasAdminSession(user: AuthUser | null): boolean {
 }
 
 export function requireAdmin(user: AuthUser | null): void {
-	if (!user) redirect(303, '/admin/login');
+	if (!user) redirect(303, '/login');
 }
 
 export async function registerUser(input: {
 	email: string;
 	phone: string;
 	password: string;
+	firstName: string;
 }): Promise<{ ok: true; user: AuthUser } | { ok: false; error: string }> {
 	const email = normalizeEmail(input.email);
 	const phone = normalizePhone(input.phone);
 	const password = input.password;
+	const firstName = input.firstName.trim().replace(/\s+/g, ' ');
 
+	if (firstName.length < 1 || firstName.length > 40) {
+		return { ok: false, error: 'Enter a first name (up to 40 characters).' };
+	}
 	if (!isEmail(email)) return { ok: false, error: 'Enter a valid email address.' };
 	if (phone.length < 8 || phone.length > 15) {
 		return { ok: false, error: 'Enter a valid phone number (8–15 digits).' };
@@ -120,7 +127,7 @@ export async function registerUser(input: {
 		const passwordHash = await hashPassword(password);
 		const [row] = await db
 			.insert(users)
-			.values({ email, phone, passwordHash, role: 'user', canCreate: false, canEdit: false, emails: [] })
+			.values({ email, phone, passwordHash, firstName, role: 'user', canCreate: false, canEdit: false, emails: [] })
 			.returning();
 		if (!row) return { ok: false, error: 'Could not create the account.' };
 		return { ok: true, user: toAuthUser(row) };
@@ -342,6 +349,7 @@ function toAuthUser(row: {
 	role: string | null;
 	canCreate: boolean | null;
 	canEdit: boolean | null;
+	firstName: string | null;
 	venueId: string | null;
 	emails: string[] | null;
 }, venueIds: string[] = []): AuthUser {
@@ -360,6 +368,7 @@ function toAuthUser(row: {
 		role,
 		canCreate: Boolean(row.canCreate),
 		canEdit: Boolean(row.canEdit),
+		firstName: row.firstName?.trim() || null,
 		venueId: row.venueId,
 		venueIds,
 		emails: row.emails ?? []

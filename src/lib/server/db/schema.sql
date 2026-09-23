@@ -56,6 +56,7 @@ CREATE TABLE users (
     email TEXT UNIQUE NOT NULL,
     phone TEXT UNIQUE,
     password_hash TEXT NOT NULL,
+    first_name TEXT,
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'editor', 'manager', 'superuser')),
     can_create BOOLEAN NOT NULL DEFAULT FALSE,
     can_edit BOOLEAN NOT NULL DEFAULT FALSE,
@@ -84,6 +85,16 @@ CREATE TABLE user_venues (
 
 CREATE INDEX idx_users_venue ON users (venue_id);
 CREATE INDEX idx_user_venues_venue ON user_venues (venue_id);
+
+CREATE TABLE comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    venue_id UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_comments_venue ON comments (venue_id, created_at DESC);
 CREATE INDEX idx_users_emails ON users USING gin (emails);
 CREATE INDEX idx_venues_created_by ON venues (created_by);
 

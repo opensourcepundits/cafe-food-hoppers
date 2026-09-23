@@ -32,21 +32,21 @@ export function canDeleteVenue(user: AuthUser | null, venue: VenueAccess): boole
 }
 
 export function requireOwner(user: AuthUser | null): void {
-	if (!user) redirect(303, '/admin/login');
+	if (!user) redirect(303, '/login');
 	if (!isOwner(user)) error(403, 'Only site admins can do that.');
 }
 
 export function requireCanCreate(user: AuthUser | null): void {
-	if (!user) redirect(303, '/admin/login');
+	if (!user) redirect(303, '/login');
 	if (!canCreateVenue(user)) error(403, 'You do not have permission to create a place.');
 }
 
 export function requireVenueEditor(user: AuthUser | null, venue: VenueAccess): void {
-	if (!user) redirect(303, '/admin/login');
+	if (!user) redirect(303, '/login');
 	if (!canEditVenue(user, venue)) error(403, 'You can only edit places you are allowed to change.');
 }
 
 export function requireSuperuser(user: AuthUser | null): void {
-	if (!user) redirect(303, '/admin/login');
+	if (!user) redirect(303, '/login');
 	if (!isSuperuser(user)) error(403, 'Only a superuser can view accounts.');
 }

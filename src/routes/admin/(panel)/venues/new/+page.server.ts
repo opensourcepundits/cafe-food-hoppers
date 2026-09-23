@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 export const actions: Actions = {
 	save: async ({ request, locals }) => {
 		const user = locals.user;
-		if (!user) redirect(303, '/admin/login');
+		if (!user) redirect(303, '/login');
 		requireCanCreate(user);
 		const data = await request.formData();
 		const parsed = payloadFromForm(data);

@@ -10,16 +10,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 export const actions: Actions = {
 	default: async ({ request, cookies }) => {
 		const data = await request.formData();
+		const firstName = String(data.get('firstName') ?? '');
 		const email = String(data.get('email') ?? '');
 		const phone = String(data.get('phone') ?? '');
 		const password = String(data.get('password') ?? '');
 		const confirm = String(data.get('confirm') ?? '');
 		if (password !== confirm) {
-			return fail(400, { error: 'Passwords do not match.', email, phone });
+			return fail(400, { error: 'Passwords do not match.', email, phone, firstName });
 		}
-		const result = await registerUser({ email, phone, password });
-		if (!result.ok) return fail(400, { error: result.error, email, phone });
+		const result = await registerUser({ email, phone, password, firstName });
+		if (!result.ok) return fail(400, { error: result.error, email, phone, firstName });
 		await createSession(result.user.id, cookies);
-		redirect(303, '/admin');
+		redirect(303, '/');
 	}
 };

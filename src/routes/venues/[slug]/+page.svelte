@@ -35,7 +35,7 @@
 		wifiLabel
 	} from '$lib/venue';
 
-	let { data } = $props();
+	let { data, form } = $props();
 	const venue = $derived(data.venue);
 
 	const maps = $derived(
@@ -362,3 +362,48 @@
 		</section>
 	</aside>
 </div>
+
+<section id="comments" class="mt-12 border-t border-line pt-8">
+	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Comments</h3>
+	{#if data.user}
+		<form method="POST" class="mt-4 max-w-xl">
+			{#if form?.error}
+				<p class="mb-3 border border-accent px-3 py-2 text-sm text-accent">{form.error}</p>
+			{/if}
+			<label class="block">
+				<span class="sr-only">Comment</span>
+				<textarea
+					name="body"
+					required
+					maxlength="1000"
+					value={form?.body ?? ''}
+					placeholder="How was the seating, the Wi-Fi, the noise?"
+					class="min-h-24 w-full border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink"
+				></textarea>
+			</label>
+			<button type="submit" class="mt-3 border border-ink bg-ink px-4 py-2 text-sm text-paper">Post comment</button>
+		</form>
+	{:else}
+		<p class="mt-4 text-sm text-muted">
+			<a href="/login?next=/venues/{venue.slug}%23comments" class="underline decoration-line underline-offset-4 hover:text-ink">
+				Sign in
+			</a>
+			to leave a comment.
+		</p>
+	{/if}
+	{#if data.comments.length === 0}
+		<p class="mt-6 text-sm text-muted">No comments yet.</p>
+	{:else}
+		<ul class="mt-6 divide-y divide-line border-y border-line">
+			{#each data.comments as comment (comment.id)}
+				<li class="py-4">
+					<p class="text-sm font-medium">{comment.author}</p>
+					<p class="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+						{formatMauritiusWhen(comment.createdAt)}
+					</p>
+					<p class="mt-2 text-sm leading-6">{comment.body}</p>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+</section>

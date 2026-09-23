@@ -25,6 +25,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 export const actions: Actions = {
 	logout: async ({ cookies }) => {
 		await clearAdminSession(cookies);
-		redirect(303, '/admin/login');
+		redirect(303, '/login');
 	}
 };

@@ -12,6 +12,7 @@ declare global {
 				role: 'user' | 'admin' | 'editor' | 'manager' | 'superuser';
 				canCreate: boolean;
 				canEdit: boolean;
+				firstName: string | null;
 				venueId: string | null;
 				venueIds: string[];
 				emails: string[];

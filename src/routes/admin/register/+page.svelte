@@ -20,6 +20,10 @@
 			<p class="border border-accent px-4 py-3 text-sm text-accent">{form.error}</p>
 		{/if}
 		<label class="block">
+			<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.16em] text-muted">First name</span>
+			<input class={field} name="firstName" value={form?.firstName ?? ''} autocomplete="given-name" required />
+		</label>
+		<label class="block">
 			<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Email</span>
 			<input class={field} type="email" name="email" value={form?.email ?? ''} autocomplete="email" required />
 		</label>
@@ -48,6 +52,6 @@
 
 	<p class="mt-6 text-sm text-muted">
 		Already registered?
-		<a href="/admin/login" class="underline decoration-line underline-offset-4 hover:text-ink">Sign in</a>
+		<a href="/login" class="underline decoration-line underline-offset-4 hover:text-ink">Sign in</a>
 	</p>
 </section>

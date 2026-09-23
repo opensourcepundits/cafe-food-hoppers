@@ -48,7 +48,7 @@ export const actions: Actions = {
 		}
 	},
 	badges: async ({ request, params, locals }) => {
-		if (!locals.user) redirect(303, '/admin/login');
+		if (!locals.user) redirect(303, '/login');
 		if (!isSuperuser(locals.user)) error(403, 'Only a superuser can set verification badges.');
 		const data = await request.formData();
 		const testedAt = datetimeLocalToIso(String(data.get('wifiTestedAt') ?? ''));

@@ -6,6 +6,7 @@ import {
 	jsonb,
 	numeric,
 	pgTable,
+	primaryKey,
 	text,
 	timestamp,
 	uuid,
@@ -77,7 +78,7 @@ export const users = pgTable(
 		email: text('email').notNull().unique(),
 		phone: text('phone').unique(),
 		passwordHash: text('password_hash').notNull(),
-		role: text('role').$type<'user' | 'admin' | 'editor' | 'superuser'>().notNull().default('user'),
+		role: text('role').$type<'user' | 'admin' | 'editor' | 'manager' | 'superuser'>().notNull().default('user'),
 		canCreate: boolean('can_create').notNull().default(false),
 		canEdit: boolean('can_edit').notNull().default(false),
 		venueId: uuid('venue_id').references(() => venues.id, { onDelete: 'set null' }),
@@ -86,6 +87,20 @@ export const users = pgTable(
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
 	(table) => [index('idx_users_venue').on(table.venueId)]
+);
+
+/** Places a shop account can monitor and edit. Placement accounts use users.venue_id instead. */
+export const userVenues = pgTable(
+	'user_venues',
+	{
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		venueId: uuid('venue_id')
+			.notNull()
+			.references(() => venues.id, { onDelete: 'cascade' })
+	},
+	(table) => [primaryKey({ columns: [table.userId, table.venueId] }), index('idx_user_venues_venue').on(table.venueId)]
 );
 
 export const sessions = pgTable(

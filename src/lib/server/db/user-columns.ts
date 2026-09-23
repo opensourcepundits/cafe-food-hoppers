@@ -17,7 +17,7 @@ END $$;
 
 DO $$ BEGIN
 	ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-	ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'admin', 'editor', 'superuser'));
+	ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'admin', 'editor', 'manager', 'superuser'));
 EXCEPTION
 	WHEN check_violation OR invalid_text_representation THEN
 		RAISE WARNING 'users_role_check skipped: %', SQLERRM;
@@ -65,4 +65,19 @@ CREATE INDEX IF NOT EXISTS idx_venues_created_by ON venues (created_by);
 ALTER TABLE venues ADD COLUMN IF NOT EXISTS wifi_tested_at timestamptz;
 ALTER TABLE venues ADD COLUMN IF NOT EXISTS wifi_download_mbps numeric(6, 1);
 ALTER TABLE venues ADD COLUMN IF NOT EXISTS wifi_upload_mbps numeric(6, 1);
+
+CREATE TABLE IF NOT EXISTS user_venues (
+	user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	venue_id uuid NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+	PRIMARY KEY (user_id, venue_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_venues_venue ON user_venues (venue_id);
+
+DO $$ BEGIN
+	ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+	ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'admin', 'editor', 'manager', 'superuser'));
+EXCEPTION
+	WHEN check_violation OR invalid_text_representation THEN
+		RAISE WARNING 'users_role_check skipped: %', SQLERRM;
+END $$;
 `;

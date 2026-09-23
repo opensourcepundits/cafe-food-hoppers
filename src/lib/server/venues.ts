@@ -255,7 +255,8 @@ export async function listVenuesAdmin(user?: AuthUser | null): Promise<Venue[]> 
 	const mapped = rows.map(mapVenue);
 	if (!user || user.role === 'superuser' || user.role === 'admin') return mapped;
 	return mapped.filter((venue) => {
-		if (user.role === 'editor' && user.venueId === venue.id) return true;
+		if (user.role === 'manager') return user.venueIds.includes(venue.id);
+		if (user.role === 'editor') return user.venueId === venue.id;
 		return venue.createdBy === user.id;
 	});
 }

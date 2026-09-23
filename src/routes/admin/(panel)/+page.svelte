@@ -36,6 +36,8 @@
 	<div class="border border-dashed border-line px-4 py-12 text-center text-sm text-muted">
 		{#if data.canCreate}
 			No places yet. <a href="/admin/venues/new" class="underline decoration-line underline-offset-4">Add one</a>.
+		{:else if data.scoped}
+			No placements are assigned to this account.
 		{:else}
 			This account cannot create or edit places yet.
 		{/if}

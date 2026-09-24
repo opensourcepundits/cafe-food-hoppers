@@ -19,6 +19,8 @@ import {
 	type MenuCategory,
 	type OpeningHours,
 	type Special,
+	parseMapsPin,
+	type MapPlace,
 	type SpecialFeedItem,
 	type Venue,
 	type VenueImage,
@@ -347,6 +349,37 @@ export function withLiveState(venue: Venue): LiveVenue {
 		ongoingSpecials: ongoingSpecials(venue.specials),
 		upcomingSpecials: upcomingSpecials(venue.specials)
 	};
+}
+
+export function placePin(venue: Pick<Venue, 'lat' | 'lng' | 'contact'>): { lat: number; lng: number } | null {
+	const fromUrl = parseMapsPin(venue.contact.google_maps ?? '');
+	if (fromUrl) return fromUrl;
+	if (venue.lat !== null && venue.lng !== null) return { lat: venue.lat, lng: venue.lng };
+	return null;
+}
+
+export async function listMapPlaces(): Promise<{ places: MapPlace[]; missing: number }> {
+	const rows = await db.select().from(venues).orderBy(venues.name);
+	const places: MapPlace[] = [];
+	let missing = 0;
+
+	for (const venue of rows.map(mapVenue)) {
+		const pin = placePin(venue);
+		if (!pin) {
+			missing += 1;
+			continue;
+		}
+		places.push({
+			id: venue.id,
+			name: venue.name,
+			slug: venue.slug,
+			district: venue.district,
+			lat: pin.lat,
+			lng: pin.lng
+		});
+	}
+
+	return { places, missing };
 }
 
 export async function listSpecialsFeed(): Promise<SpecialFeedItem[]> {

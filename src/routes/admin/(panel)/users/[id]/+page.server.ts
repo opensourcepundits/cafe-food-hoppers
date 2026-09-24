@@ -33,17 +33,15 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const [places, groups, comments] = await Promise.all([
 		db
-			.select({
-				id: venues.id,
-				name: venues.name,
-				district: venues.district,
-				franchiseId: venues.franchiseId
-			})
+			.select({ id: venues.id, name: venues.name, district: venues.district })
 			.from(venues)
 			.orderBy(asc(venues.name)),
 		db.select({ id: franchises.id, name: franchises.name }).from(franchises).orderBy(asc(franchises.name)),
 		listCommentsByUser(row.id)
 	]);
+
+	const place = places.find((item) => item.id === row.venueId) ?? null;
+	const franchise = groups.find((item) => item.id === row.franchiseId) ?? null;
 
 	return {
 		account: {
@@ -53,7 +51,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			phone: row.phone,
 			role: row.role || 'user',
 			venueId: row.venueId,
-			franchiseId: row.franchiseId
+			franchiseId: row.franchiseId,
+			placeName: place ? `${place.name} · ${place.district}` : null,
+			franchiseName: franchise?.name ?? null
 		},
 		roles: ROLES,
 		places,
@@ -86,43 +86,22 @@ export const actions: Actions = {
 			venueId = String(data.get('venueId') ?? '').trim();
 			if (!venueId) return fail(400, { error: 'Choose the one place this person manages.' });
 			const [place] = await db
-				.select({ id: venues.id, name: venues.name, franchiseId: venues.franchiseId })
+				.select({ id: venues.id })
 				.from(venues)
 				.where(eq(venues.id, venueId))
 				.limit(1);
 			if (!place) return fail(400, { error: 'That place no longer exists.' });
-			if (!place.franchiseId) {
-				const [created] = await db
-					.insert(franchises)
-					.values({ name: place.name })
-					.returning({ id: franchises.id });
-				if (!created) return fail(500, { error: 'Could not tie this place to a franchise.' });
-				await db.update(venues).set({ franchiseId: created.id }).where(eq(venues.id, place.id));
-			}
 		}
 
 		if (role === 'franchise_manager') {
-			const picked = String(data.get('franchiseId') ?? '').trim();
-			if (picked === 'new') {
-				const name = String(data.get('franchiseName') ?? '').trim();
-				const venueIds = data.getAll('venueIds').map(String).filter(Boolean);
-				if (!name) return fail(400, { error: 'Name the franchise.' });
-				if (!venueIds.length) return fail(400, { error: 'A franchise needs at least one place.' });
-				const [created] = await db.insert(franchises).values({ name }).returning({ id: franchises.id });
-				if (!created) return fail(500, { error: 'Could not create the franchise.' });
-				franchiseId = created.id;
-				for (const id of venueIds) {
-					await db.update(venues).set({ franchiseId }).where(eq(venues.id, id));
-				}
-			} else {
-				franchiseId = picked;
-				if (!franchiseId) return fail(400, { error: 'Choose the franchise this person manages.' });
-				const places = await db
-					.select({ id: venues.id })
-					.from(venues)
-					.where(eq(venues.franchiseId, franchiseId));
-				if (!places.length) return fail(400, { error: 'That franchise has no places yet.' });
-			}
+			franchiseId = String(data.get('franchiseId') ?? '').trim();
+			if (!franchiseId) return fail(400, { error: 'Choose the franchise this person manages.' });
+			const [group] = await db
+				.select({ id: franchises.id })
+				.from(franchises)
+				.where(eq(franchises.id, franchiseId))
+				.limit(1);
+			if (!group) return fail(400, { error: 'That franchise no longer exists.' });
 		}
 
 		await db

@@ -24,6 +24,17 @@
 	{#if data.account.phone}
 		<p class="text-sm text-muted">{data.account.phone}</p>
 	{/if}
+	<p class="mt-3 text-sm">
+		{#if data.account.role === 'place_manager'}
+			Place manager{data.account.placeName ? ` · ${data.account.placeName}` : ''}
+		{:else if data.account.role === 'franchise_manager'}
+			Franchise manager{data.account.franchiseName ? ` · ${data.account.franchiseName}` : ''}
+		{:else if data.account.role === 'superuser'}
+			Superuser
+		{:else}
+			User
+		{/if}
+	</p>
 </section>
 
 {#if data.account.role === 'superuser'}
@@ -53,7 +64,6 @@
 					{/each}
 				</select>
 			</label>
-			<p class="mt-2 text-xs text-muted">One place. If it is not in a franchise yet, saving creates one for it.</p>
 		{/if}
 
 		{#if role === 'franchise_manager'}
@@ -64,25 +74,8 @@
 					{#each data.franchises as group (group.id)}
 						<option value={group.id} selected={group.id === data.account.franchiseId}>{group.name}</option>
 					{/each}
-					<option value="new">New franchise…</option>
 				</select>
 			</label>
-			<label class="mt-4 block text-sm">
-				<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted">New franchise name</span>
-				<input class={field} name="franchiseName" placeholder="Only if you chose New franchise" />
-			</label>
-			<fieldset class="mt-4">
-				<legend class="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">Places in a new franchise</legend>
-				<div class="mt-2 grid gap-2 text-sm sm:grid-cols-2">
-					{#each data.places as place (place.id)}
-						<label class="flex items-start gap-2">
-							<input type="checkbox" name="venueIds" value={place.id} />
-							<span>{place.name} <span class="text-muted">· {place.district}</span></span>
-						</label>
-					{/each}
-				</div>
-			</fieldset>
-			<p class="mt-2 text-xs text-muted">They can see and edit every place in the franchise.</p>
 		{/if}
 
 		<button type="submit" class="mt-4 border border-ink bg-ink px-4 py-2 text-sm text-paper">Update role</button>

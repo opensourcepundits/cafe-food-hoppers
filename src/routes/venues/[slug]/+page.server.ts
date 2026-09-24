@@ -1,13 +1,11 @@
 import { error, fail, isHttpError, redirect } from '@sveltejs/kit';
 import { addComment, listComments } from '$lib/server/comments';
-import { ensureSchema } from '$lib/server/db/ensure-schema';
 import { isFavourite, toggleFavourite } from '$lib/server/favourites';
 import { getVenueBySlug } from '$lib/server/venues';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	try {
-		await ensureSchema();
 		const venue = await getVenueBySlug(params.slug);
 		if (!venue) error(404, 'That venue is not in the index.');
 		const [comments, favourite] = await Promise.all([
@@ -26,7 +24,6 @@ export const actions: Actions = {
 	favourite: async ({ locals, params }) => {
 		const next = `/venues/${params.slug}`;
 		if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(next)}`);
-		await ensureSchema();
 		const venue = await getVenueBySlug(params.slug);
 		if (!venue) error(404, 'That venue is not in the index.');
 		await toggleFavourite(locals.user.id, venue.id);
@@ -40,7 +37,6 @@ export const actions: Actions = {
 		if (!body || body.length > 1000) {
 			return fail(400, { error: 'Write a comment of up to 1000 characters.', body });
 		}
-		await ensureSchema();
 		const venue = await getVenueBySlug(params.slug);
 		if (!venue) error(404, 'That venue is not in the index.');
 		await addComment(venue.id, locals.user.id, body);

@@ -1,6 +1,5 @@
 import { redirect, type Handle } from '@sveltejs/kit';
-import { SESSION_COOKIE, readSession } from '$lib/server/auth';
-import { ensureSchema } from '$lib/server/db/ensure-schema';
+import { readSession } from '$lib/server/auth';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
@@ -10,15 +9,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 		path === '/admin/login/' ||
 		path === '/admin/register' ||
 		path === '/admin/register/';
-	const isLogin = path === '/login' || path === '/login/';
-
-	if (isAdminApp || isLogin || event.cookies.get(SESSION_COOKIE)) {
-		try {
-			await ensureSchema();
-		} catch (cause) {
-			console.error('Schema check failed.', cause);
-		}
-	}
 
 	const user = await readSession(event.cookies);
 	event.locals.user = user;

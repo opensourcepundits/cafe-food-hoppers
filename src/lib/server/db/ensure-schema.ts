@@ -1,6 +1,5 @@
 import { env } from '$env/dynamic/private';
 import postgres from 'postgres';
-import { upsertSuperusers } from '../superusers';
 import { requiresSsl, resolveDatabaseUrl } from './env';
 import { FRANCHISE_ROLES_SQL, USER_COLUMNS_SQL } from './user-columns';
 
@@ -55,10 +54,7 @@ async function applySchema(): Promise<boolean> {
 	const sql = postgres(url, postgresOptions(url, 1));
 	try {
 		const version = await schemaVersion(sql);
-		if (version >= SCHEMA_VERSION) {
-			await seedSuperusers(sql);
-			return true;
-		}
+		if (version >= SCHEMA_VERSION) return true;
 		if (version >= 1 && version < SCHEMA_VERSION) {
 			if (version < 2) {
 				await sql.unsafe(`
@@ -68,7 +64,6 @@ async function applySchema(): Promise<boolean> {
 			}
 			await sql.unsafe(FRANCHISE_ROLES_SQL);
 			await sql.unsafe(`UPDATE schema_meta SET version = ${SCHEMA_VERSION} WHERE id = 1`);
-			await seedSuperusers(sql);
 			return true;
 		}
 
@@ -163,18 +158,9 @@ async function applySchema(): Promise<boolean> {
 			return true;
 		});
 
-		if (migrated) await seedSuperusers(sql);
 		return migrated;
 	} finally {
 		await sql.end({ timeout: 5 });
 	}
 }
 
-async function seedSuperusers(sql: postgres.Sql): Promise<void> {
-	try {
-		const seeded = await upsertSuperusers(sql, env);
-		if (seeded) console.log(`Ensured ${seeded} superuser account${seeded === 1 ? '' : 's'}.`);
-	} catch (error) {
-		console.error('Superuser seed failed.', error);
-	}
-}

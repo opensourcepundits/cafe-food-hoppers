@@ -2,9 +2,9 @@ import { env } from '$env/dynamic/private';
 import postgres from 'postgres';
 import { upsertSuperusers } from '../superusers';
 import { requiresSsl, resolveDatabaseUrl } from './env';
-import { USER_COLUMNS_SQL } from './user-columns';
+import { FRANCHISE_ROLES_SQL, USER_COLUMNS_SQL } from './user-columns';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 let pending: Promise<void> | undefined;
 
 export function requireDatabaseUrl(): string {
@@ -59,12 +59,15 @@ async function applySchema(): Promise<boolean> {
 			await seedSuperusers(sql);
 			return true;
 		}
-		if (version >= 1) {
-			await sql.unsafe(`
-				ALTER TABLE comments NO FORCE ROW LEVEL SECURITY;
-				ALTER TABLE favourites NO FORCE ROW LEVEL SECURITY;
-				UPDATE schema_meta SET version = ${SCHEMA_VERSION} WHERE id = 1;
-			`);
+		if (version >= 1 && version < SCHEMA_VERSION) {
+			if (version < 2) {
+				await sql.unsafe(`
+					ALTER TABLE comments NO FORCE ROW LEVEL SECURITY;
+					ALTER TABLE favourites NO FORCE ROW LEVEL SECURITY;
+				`);
+			}
+			await sql.unsafe(FRANCHISE_ROLES_SQL);
+			await sql.unsafe(`UPDATE schema_meta SET version = ${SCHEMA_VERSION} WHERE id = 1`);
 			await seedSuperusers(sql);
 			return true;
 		}
@@ -148,6 +151,7 @@ async function applySchema(): Promise<boolean> {
 			EXECUTE FUNCTION set_updated_at();
 		`);
 			await tx.unsafe(USER_COLUMNS_SQL);
+			await tx.unsafe(FRANCHISE_ROLES_SQL);
 			await tx.unsafe(`
 				CREATE TABLE IF NOT EXISTS schema_meta (
 					id integer PRIMARY KEY,

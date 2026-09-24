@@ -9,7 +9,11 @@
 	const signedInName = $derived(
 		data.user?.firstName?.trim() || data.user?.email.split('@')[0] || ''
 	);
-	const accountHref = $derived(data.user?.role === 'user' ? '/profile' : '/admin');
+	const accountHref = $derived(
+		data.user?.role === 'place_manager' || data.user?.role === 'franchise_manager' || data.user?.role === 'superuser'
+			? '/admin'
+			: '/profile'
+	);
 </script>
 
 <svelte:head>

@@ -49,6 +49,7 @@ export const venues = pgTable(
 			.$type<Contact>()
 			.notNull()
 			.default(sql`'{}'::jsonb`),
+		franchiseId: uuid('franchise_id'),
 		createdBy: uuid('created_by').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
 		speedVerified: boolean('speed_verified').notNull().default(false),
 		noiseVerified: boolean('noise_verified').notNull().default(false),
@@ -79,16 +80,26 @@ export const users = pgTable(
 		phone: text('phone').unique(),
 		passwordHash: text('password_hash').notNull(),
 		firstName: text('first_name'),
-		role: text('role').$type<'user' | 'admin' | 'editor' | 'manager' | 'superuser'>().notNull().default('user'),
+		role: text('role')
+			.$type<'user' | 'place_manager' | 'franchise_manager' | 'superuser'>()
+			.notNull()
+			.default('user'),
 		canCreate: boolean('can_create').notNull().default(false),
 		canEdit: boolean('can_edit').notNull().default(false),
 		venueId: uuid('venue_id').references(() => venues.id, { onDelete: 'set null' }),
+		franchiseId: uuid('franchise_id'),
 		emails: text('emails').array().notNull().default(sql`'{}'::text[]`),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
 	(table) => [index('idx_users_venue').on(table.venueId)]
 );
+
+export const franchises = pgTable('franchises', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	name: text('name').notNull(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+});
 
 /** Places a shop account can monitor and edit. Placement accounts use users.venue_id instead. */
 export const userVenues = pgTable(

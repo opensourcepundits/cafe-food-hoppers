@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		q,
 		total: venues.length,
 		deleted: url.searchParams.get('deleted') === '1',
-		scoped: locals.user?.role === 'manager' || locals.user?.role === 'editor'
+		scoped: locals.user?.role === 'franchise_manager' || locals.user?.role === 'place_manager'
 	};
 };
 

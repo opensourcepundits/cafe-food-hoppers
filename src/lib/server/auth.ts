@@ -8,7 +8,7 @@ import { hashPassword, verifyPassword } from '$lib/server/password';
 export const SESSION_COOKIE = 'place_session';
 const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
 
-export type UserRole = 'user' | 'admin' | 'editor' | 'manager' | 'superuser';
+export type UserRole = 'user' | 'place_manager' | 'franchise_manager' | 'superuser';
 export type AccountKind = 'standard' | 'shop' | 'placement';
 
 export type AuthUser = {
@@ -20,6 +20,7 @@ export type AuthUser = {
 	canEdit: boolean;
 	firstName: string | null;
 	venueId: string | null;
+	franchiseId: string | null;
 	venueIds: string[];
 	emails: string[];
 };
@@ -73,6 +74,7 @@ export async function readSession(cookies: Cookies): Promise<AuthUser | null> {
 			canEdit: users.canEdit,
 			firstName: users.firstName,
 			venueId: users.venueId,
+			franchiseId: users.franchiseId,
 			emails: users.emails,
 			expiresAt: sessions.expiresAt
 		})
@@ -86,7 +88,7 @@ export async function readSession(cookies: Cookies): Promise<AuthUser | null> {
 		return null;
 	}
 
-	return toAuthUser(row, await assignedVenueIds(row.id));
+	return toAuthUser(row, await assignedVenueIds(row));
 }
 
 export function hasAdminSession(user: AuthUser | null): boolean {
@@ -254,7 +256,7 @@ export async function setAccountAccess(
 
 	const shop = access.kind === 'shop';
 	const placement = access.kind === 'placement';
-	const role: UserRole = shop ? 'manager' : placement ? 'editor' : row.role === 'admin' || row.role === 'manager' || row.role === 'editor' ? 'user' : row.role;
+	const role: UserRole = shop ? 'franchise_manager' : placement ? 'place_manager' : 'user';
 
 	await db.transaction(async (tx) => {
 		await tx
@@ -377,16 +379,18 @@ function toAuthUser(row: {
 	canEdit: boolean | null;
 	firstName: string | null;
 	venueId: string | null;
+	franchiseId: string | null;
 	emails: string[] | null;
 }, venueIds: string[] = []): AuthUser {
+	const raw = String(row.role ?? '').toLowerCase();
 	const role: UserRole =
-		row.role === 'editor' ||
-		row.role === 'manager' ||
-		row.role === 'superuser' ||
-		row.role === 'admin' ||
-		row.role === 'user'
-			? row.role
-			: 'user';
+		raw === 'place_manager' || raw === 'editor'
+			? 'place_manager'
+			: raw === 'franchise_manager' || raw === 'manager'
+				? 'franchise_manager'
+				: raw === 'superuser'
+					? 'superuser'
+					: 'user';
 	return {
 		id: row.id,
 		email: row.email,
@@ -396,15 +400,28 @@ function toAuthUser(row: {
 		canEdit: Boolean(row.canEdit),
 		firstName: row.firstName?.trim() || null,
 		venueId: row.venueId,
+		franchiseId: row.franchiseId,
 		venueIds,
 		emails: row.emails ?? []
 	};
 }
 
-async function assignedVenueIds(userId: string): Promise<string[]> {
-	const rows = await db
-		.select({ venueId: userVenues.venueId })
-		.from(userVenues)
-		.where(eq(userVenues.userId, userId));
-	return rows.map((row) => row.venueId);
+async function assignedVenueIds(row: { id: string; role: string | null; venueId: string | null; franchiseId: string | null }): Promise<string[]> {
+	const role = String(row.role ?? '').toLowerCase();
+	if ((role === 'place_manager' || role === 'editor') && row.venueId) return [row.venueId];
+	if ((role === 'franchise_manager' || role === 'manager') && row.franchiseId) {
+		const places = await db
+			.select({ id: venues.id })
+			.from(venues)
+			.where(eq(venues.franchiseId, row.franchiseId));
+		return places.map((place) => place.id);
+	}
+	if (role === 'manager') {
+		const links = await db
+			.select({ venueId: userVenues.venueId })
+			.from(userVenues)
+			.where(eq(userVenues.userId, row.id));
+		return links.map((link) => link.venueId);
+	}
+	return [];
 }

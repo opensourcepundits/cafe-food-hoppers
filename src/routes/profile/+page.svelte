@@ -29,6 +29,11 @@
 		>
 			Change password
 		</button>
+		<form method="POST" action="/admin?/logout">
+			<button type="submit" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
+				Sign out
+			</button>
+		</form>
 	</div>
 </section>
 

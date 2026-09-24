@@ -4,7 +4,7 @@ import { upsertSuperusers } from '../superusers';
 import { requiresSsl, resolveDatabaseUrl } from './env';
 import { USER_COLUMNS_SQL } from './user-columns';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 let pending: Promise<void> | undefined;
 
 export function requireDatabaseUrl(): string {
@@ -41,12 +41,12 @@ export function ensureSchema(): Promise<void> {
 	return pending;
 }
 
-async function schemaIsCurrent(sql: postgres.Sql): Promise<boolean> {
+async function schemaVersion(sql: postgres.Sql): Promise<number> {
 	try {
 		const rows = await sql<{ version: number }[]>`SELECT version FROM schema_meta WHERE id = 1`;
-		return Number(rows[0]?.version) >= SCHEMA_VERSION;
+		return Number(rows[0]?.version) || 0;
 	} catch {
-		return false;
+		return 0;
 	}
 }
 
@@ -54,7 +54,17 @@ async function applySchema(): Promise<boolean> {
 	const url = requireDatabaseUrl();
 	const sql = postgres(url, postgresOptions(url, 1));
 	try {
-		if (await schemaIsCurrent(sql)) {
+		const version = await schemaVersion(sql);
+		if (version >= SCHEMA_VERSION) {
+			await seedSuperusers(sql);
+			return true;
+		}
+		if (version >= 1) {
+			await sql.unsafe(`
+				ALTER TABLE comments NO FORCE ROW LEVEL SECURITY;
+				ALTER TABLE favourites NO FORCE ROW LEVEL SECURITY;
+				UPDATE schema_meta SET version = ${SCHEMA_VERSION} WHERE id = 1;
+			`);
 			await seedSuperusers(sql);
 			return true;
 		}
@@ -64,7 +74,7 @@ async function applySchema(): Promise<boolean> {
 			await tx.unsafe(`SET LOCAL statement_timeout = '20s'`);
 			const [lock] = await tx<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(714203) AS locked`;
 			if (!lock?.locked) return false;
-			if (await schemaIsCurrent(tx as unknown as postgres.Sql)) return true;
+			if ((await schemaVersion(tx as unknown as postgres.Sql)) >= SCHEMA_VERSION) return true;
 
 			await tx.unsafe(`
 			CREATE TABLE IF NOT EXISTS venues (

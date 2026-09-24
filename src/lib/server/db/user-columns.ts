@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS favourites (
 );
 CREATE INDEX IF NOT EXISTS idx_favourites_user ON favourites (user_id, created_at DESC);
 ALTER TABLE favourites ENABLE ROW LEVEL SECURITY;
-ALTER TABLE favourites FORCE ROW LEVEL SECURITY;
+ALTER TABLE favourites NO FORCE ROW LEVEL SECURITY;
 DO $$ BEGIN
 	REVOKE ALL ON TABLE favourites FROM anon, authenticated;
 EXCEPTION
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS comments (
 CREATE INDEX IF NOT EXISTS idx_comments_venue ON comments (venue_id, created_at DESC);
 
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE comments FORCE ROW LEVEL SECURITY;
+ALTER TABLE comments NO FORCE ROW LEVEL SECURITY;
 DO $$ BEGIN
 	REVOKE ALL ON TABLE comments FROM anon, authenticated;
 EXCEPTION

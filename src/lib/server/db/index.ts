@@ -5,9 +5,13 @@ import { postgresOptions, requireDatabaseUrl } from './ensure-schema';
 
 function createDb() {
 	const databaseUrl = requireDatabaseUrl();
-	return drizzle(postgres(databaseUrl, postgresOptions(databaseUrl, process.env.VERCEL ? 1 : 10)), {
-		schema
-	});
+	return drizzle(
+		postgres(databaseUrl, {
+			...postgresOptions(databaseUrl, process.env.VERCEL ? 1 : 10),
+			connection: { lock_timeout: 3000, statement_timeout: 15000 }
+		}),
+		{ schema }
+	);
 }
 
 type Database = ReturnType<typeof createDb>;

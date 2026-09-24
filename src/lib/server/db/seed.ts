@@ -2,7 +2,6 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { venues, type NewVenue } from './schema';
 import { resolveDatabaseUrl, requiresSsl } from './env';
-import { USER_COLUMNS_SQL } from './user-columns';
 import { upsertSuperusers } from '../superusers';
 import type { OpeningHours, Weekday } from '../../venue';
 
@@ -538,14 +537,6 @@ async function seed() {
 	});
 	const db = drizzle(client);
 
-	await client.unsafe(`
-		ALTER TABLE venues
-		ADD COLUMN IF NOT EXISTS specials JSONB NOT NULL DEFAULT '[]'::jsonb;
-	`);
-	await client.unsafe(`
-		CREATE INDEX IF NOT EXISTS idx_venues_specials ON venues USING gin (specials);
-	`);
-
 	const placeFlags: Record<string, Partial<(typeof seedVenues)[number]['workInfo']>> = {
 		bloom: { nice_view: true, air_conditioning: true, indoor_seating: true },
 		'the-workshop': { air_conditioning: true, indoor_seating: true },
@@ -639,25 +630,6 @@ async function seed() {
 	await db.delete(venues);
 	await db.insert(venues).values(seedVenues);
 
-	await client.unsafe(`
-		CREATE OR REPLACE FUNCTION set_updated_at()
-		RETURNS TRIGGER AS $$
-		BEGIN
-			NEW.updated_at = NOW();
-			RETURN NEW;
-		END;
-		$$ LANGUAGE plpgsql;
-	`);
-
-	await client.unsafe(`
-		DROP TRIGGER IF EXISTS venues_updated_at ON venues;
-		CREATE TRIGGER venues_updated_at
-		BEFORE UPDATE ON venues
-		FOR EACH ROW
-		EXECUTE FUNCTION set_updated_at();
-	`);
-
-	await client.unsafe(USER_COLUMNS_SQL);
 	const superusers = await upsertSuperusers(client, process.env);
 	await client.end();
 	console.log(`Seeded ${seedVenues.length} venues.`);

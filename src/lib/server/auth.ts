@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { redirect, type Cookies } from '@sveltejs/kit';
-import { and, desc, eq, gt, inArray, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, or, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { sessions, userVenues, users, venues, type UserRow } from '$lib/server/db/schema';
 import { hashPassword, verifyPassword } from '$lib/server/password';
@@ -156,20 +156,21 @@ function formatWhen(value: Date | string | null): string | null {
 
 /** Every account except seeded superusers, with the places each one created. */
 export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
+	const roleText = sql<string>`lower(${users.role}::text)`;
 	const [people, places, links, seen] = await Promise.all([
 		db
 			.select({
 				id: users.id,
 				email: users.email,
 				phone: users.phone,
-				role: users.role,
+				role: roleText,
 				canCreate: users.canCreate,
 				canEdit: users.canEdit,
 				venueId: users.venueId,
 				createdAt: users.createdAt
 			})
 			.from(users)
-			.where(ne(users.role, 'superuser'))
+			.where(sql`${roleText} <> 'superuser'`)
 			.orderBy(desc(users.createdAt)),
 		db
 			.select({
@@ -209,8 +210,9 @@ export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
 	}
 
 	return people.map((row) => {
-		const legacyAdmin = row.role === 'admin';
-		const kind: AccountKind = row.role === 'manager' ? 'shop' : row.role === 'editor' ? 'placement' : 'standard';
+		const role = String(row.role ?? '').toLowerCase();
+		const legacyAdmin = role === 'admin';
+		const kind: AccountKind = role === 'manager' ? 'shop' : role === 'editor' ? 'placement' : 'standard';
 		return {
 			id: row.id,
 			email: row.email,

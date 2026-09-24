@@ -382,7 +382,7 @@
 <section id="comments" class="mt-12 border-t border-line pt-8">
 	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Comments</h3>
 	{#if data.user}
-		<form method="POST" class="mt-4 max-w-xl">
+		<form method="POST" action="?/comment" class="mt-4 max-w-xl">
 			{#if form?.error}
 				<p class="mb-3 border border-accent px-3 py-2 text-sm text-accent">{form.error}</p>
 			{/if}

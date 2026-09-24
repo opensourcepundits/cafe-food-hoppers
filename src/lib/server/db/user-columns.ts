@@ -38,7 +38,7 @@ END $$;
 
 DO $$ BEGIN
 	ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-	ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'admin', 'editor', 'manager', 'superuser'));
+	ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'place_manager', 'franchise_manager', 'superuser'));
 EXCEPTION
 	WHEN check_violation OR invalid_text_representation THEN
 		RAISE WARNING 'users_role_check skipped: %', SQLERRM;
@@ -96,7 +96,7 @@ CREATE INDEX IF NOT EXISTS idx_user_venues_venue ON user_venues (venue_id);
 
 DO $$ BEGIN
 	ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-	ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'admin', 'editor', 'manager', 'superuser'));
+	ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'place_manager', 'franchise_manager', 'superuser'));
 EXCEPTION
 	WHEN check_violation OR invalid_text_representation THEN
 		RAISE WARNING 'users_role_check skipped: %', SQLERRM;
@@ -134,5 +134,69 @@ DO $$ BEGIN
 	REVOKE ALL ON TABLE comments FROM anon, authenticated;
 EXCEPTION
 	WHEN undefined_object THEN NULL;
+END $$;
+`;
+
+export const FRANCHISE_ROLES_SQL = `
+CREATE TABLE IF NOT EXISTS franchises (
+	id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	name text NOT NULL,
+	created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS franchise_id uuid;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS franchise_id uuid;
+DO $$ BEGIN
+	ALTER TABLE venues
+		ADD CONSTRAINT venues_franchise_id_fkey
+		FOREIGN KEY (franchise_id) REFERENCES franchises(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+	ALTER TABLE users
+		ADD CONSTRAINT users_franchise_id_fkey
+		FOREIGN KEY (franchise_id) REFERENCES franchises(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+UPDATE users SET role = 'place_manager' WHERE lower(role::text) = 'editor';
+UPDATE users SET role = 'user' WHERE lower(role::text) = 'admin';
+
+INSERT INTO franchises (id, name)
+SELECT u.id, coalesce(nullif(trim(u.first_name), ''), split_part(u.email, '@', 1))
+FROM users u
+WHERE lower(u.role::text) = 'manager'
+ON CONFLICT (id) DO NOTHING;
+
+UPDATE users SET franchise_id = id, role = 'franchise_manager' WHERE lower(role::text) = 'manager';
+
+UPDATE venues v
+SET franchise_id = uv.user_id
+FROM user_venues uv
+WHERE v.id = uv.venue_id
+	AND v.franchise_id IS NULL
+	AND EXISTS (
+		SELECT 1 FROM users u WHERE u.id = uv.user_id AND u.role = 'franchise_manager'
+	);
+
+INSERT INTO franchises (id, name)
+SELECT v.id, v.name
+FROM venues v
+JOIN users u ON u.venue_id = v.id AND u.role = 'place_manager'
+WHERE v.franchise_id IS NULL
+ON CONFLICT (id) DO NOTHING;
+
+UPDATE venues v
+SET franchise_id = v.id
+FROM users u
+WHERE u.role = 'place_manager' AND u.venue_id = v.id AND v.franchise_id IS NULL;
+
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_editor_venue;
+DO $$ BEGIN
+	ALTER TABLE users ADD CONSTRAINT users_role_check
+		CHECK (role IN ('user', 'place_manager', 'franchise_manager', 'superuser'));
+EXCEPTION
+	WHEN check_violation OR duplicate_object THEN
+		RAISE WARNING 'users_role_check skipped: %', SQLERRM;
 END $$;
 `;

@@ -22,7 +22,15 @@
 							<span class="block font-medium">{account.name}</span>
 							<span class="text-sm text-muted">{account.email}</span>
 						</span>
-						<span class="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">{account.role}</span>
+						<span class="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+							{account.role === 'place_manager'
+								? 'Place manager'
+								: account.role === 'franchise_manager'
+									? 'Franchise manager'
+									: account.role === 'superuser'
+										? 'Superuser'
+										: 'User'}
+						</span>
 					</a>
 				</li>
 			{/each}

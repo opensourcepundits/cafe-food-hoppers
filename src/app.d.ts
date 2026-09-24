@@ -9,7 +9,7 @@ declare global {
 				id: string;
 				email: string;
 				phone: string | null;
-				role: 'user' | 'admin' | 'editor' | 'manager' | 'superuser';
+				role: 'user' | 'place_manager' | 'franchise_manager' | 'superuser';
 				canCreate: boolean;
 				canEdit: boolean;
 				firstName: string | null;

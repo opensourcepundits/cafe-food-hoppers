@@ -255,10 +255,9 @@ export async function getVenueBySlug(slug: string): Promise<LiveVenue | null> {
 export async function listVenuesAdmin(user?: AuthUser | null): Promise<Venue[]> {
 	const rows = await db.select().from(venues).orderBy(venues.name);
 	const mapped = rows.map(mapVenue);
-	if (!user || user.role === 'superuser' || user.role === 'admin') return mapped;
+	if (!user || user.role === 'superuser') return mapped;
 	return mapped.filter((venue) => {
-		if (user.role === 'manager') return user.venueIds.includes(venue.id);
-		if (user.role === 'editor') return user.venueId === venue.id;
+		if (user.role === 'franchise_manager' || user.role === 'place_manager') return user.venueIds.includes(venue.id);
 		return venue.createdBy === user.id;
 	});
 }

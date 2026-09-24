@@ -32,7 +32,7 @@ export const actions: Actions = {
 		await toggleFavourite(locals.user.id, venue.id);
 		redirect(303, next);
 	},
-	default: async ({ request, locals, params }) => {
+	comment: async ({ request, locals, params }) => {
 		const next = `/venues/${params.slug}#comments`;
 		if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(next)}`);
 		const data = await request.formData();

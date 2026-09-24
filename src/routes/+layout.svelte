@@ -36,6 +36,14 @@
 					Places
 				</a>
 				<a
+					href="/map"
+					class="border-b pb-0.5 {path.startsWith('/map')
+						? 'border-ink text-ink'
+						: 'border-transparent text-muted hover:text-ink'}"
+				>
+					Map
+				</a>
+				<a
 					href="/specials"
 					class="border-b pb-0.5 {path.startsWith('/specials')
 						? 'border-ink text-ink'

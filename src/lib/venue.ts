@@ -149,6 +149,15 @@ export type Venue = {
 	updatedAt: Date | null;
 };
 
+export type MapPlace = {
+	id: string;
+	name: string;
+	slug: string;
+	district: string;
+	lat: number;
+	lng: number;
+};
+
 export type LiveVenue = Venue & {
 	open: boolean;
 	openLate: boolean;

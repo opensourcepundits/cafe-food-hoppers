@@ -1,7 +1,28 @@
 /** Idempotent users-table upgrades. Safe to run on every process start. */
 export const USER_COLUMNS_SQL = `
+DO $$ BEGIN
+	IF EXISTS (
+		SELECT 1
+		FROM information_schema.columns
+		WHERE table_schema = 'public'
+			AND table_name = 'users'
+			AND column_name = 'role'
+			AND udt_name = 'role'
+	) THEN
+		ALTER TABLE users ALTER COLUMN role DROP DEFAULT;
+		ALTER TABLE users ALTER COLUMN role TYPE text USING lower(role::text);
+		ALTER TABLE users ALTER COLUMN role SET DEFAULT 'user';
+	END IF;
+END $$;
+
+DO $$ BEGIN
+	DROP TYPE IF EXISTS role;
+EXCEPTION
+	WHEN dependent_objects_still_exist THEN NULL;
+END $$;
+
 ALTER TABLE users
-	ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'admin',
+	ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'user',
 	ADD COLUMN IF NOT EXISTS venue_id uuid,
 	ADD COLUMN IF NOT EXISTS emails text[] NOT NULL DEFAULT '{}';
 
@@ -82,6 +103,21 @@ EXCEPTION
 END $$;
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name text;
+
+CREATE TABLE IF NOT EXISTS favourites (
+	user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	venue_id uuid NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	PRIMARY KEY (user_id, venue_id)
+);
+CREATE INDEX IF NOT EXISTS idx_favourites_user ON favourites (user_id, created_at DESC);
+ALTER TABLE favourites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE favourites FORCE ROW LEVEL SECURITY;
+DO $$ BEGIN
+	REVOKE ALL ON TABLE favourites FROM anon, authenticated;
+EXCEPTION
+	WHEN undefined_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS comments (
 	id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

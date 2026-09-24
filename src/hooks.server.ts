@@ -12,7 +12,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 		path === '/admin/register/';
 	const isLogin = path === '/login' || path === '/login/';
 
-	if (isAdminApp || isLogin || event.cookies.get(SESSION_COOKIE)) await ensureSchema();
+	if (isAdminApp || isLogin || event.cookies.get(SESSION_COOKIE)) {
+		try {
+			await ensureSchema();
+		} catch (cause) {
+			console.error('Schema check failed.', cause);
+		}
+	}
 
 	const user = await readSession(event.cookies);
 	event.locals.user = user;

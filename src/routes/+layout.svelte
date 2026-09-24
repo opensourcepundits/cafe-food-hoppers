@@ -9,6 +9,7 @@
 	const signedInName = $derived(
 		data.user?.firstName?.trim() || data.user?.email.split('@')[0] || ''
 	);
+	const accountHref = $derived(data.user?.role === 'user' ? '/profile' : '/admin');
 </script>
 
 <svelte:head>
@@ -53,8 +54,10 @@
 				</a>
 				{#if signedInName}
 					<a
-						href="/admin"
-						class="border-b border-transparent pb-0.5 normal-case tracking-normal text-ink"
+						href={accountHref}
+						class="border-b pb-0.5 normal-case tracking-normal {path.startsWith(accountHref)
+							? 'border-ink text-ink'
+							: 'border-transparent text-ink'}"
 					>
 						{signedInName}
 					</a>

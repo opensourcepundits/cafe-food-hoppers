@@ -1,10 +1,12 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { asc, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { requireSuperuser } from '$lib/server/access';
-import { listCommentsByUser } from '$lib/server/comments';
 import { db } from '$lib/server/db';
-import { franchises, users, venues } from '$lib/server/db/schema';
+import { comments, franchises, users, venues } from '$lib/server/db/schema';
 import type { Actions, PageServerLoad } from './$types';
+
+const commentPlace = alias(venues, 'comment_place');
 
 const ROLES = [
 	{ id: 'user', label: 'User' },
@@ -16,7 +18,7 @@ type AssignableRole = (typeof ROLES)[number]['id'];
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	requireSuperuser(locals.user);
-	const [row] = await db
+	const rows = await db
 		.select({
 			id: users.id,
 			firstName: users.firstName,
@@ -24,24 +26,33 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			phone: users.phone,
 			role: sql<string>`lower(${users.role}::text)`,
 			venueId: users.venueId,
-			franchiseId: users.franchiseId
+			franchiseId: users.franchiseId,
+			placeName: venues.name,
+			placeDistrict: venues.district,
+			franchiseName: franchises.name,
+			commentId: comments.id,
+			commentBody: comments.body,
+			commentAt: comments.createdAt,
+			commentVenue: commentPlace.name,
+			commentSlug: commentPlace.slug
 		})
 		.from(users)
+		.leftJoin(venues, eq(users.venueId, venues.id))
+		.leftJoin(franchises, eq(users.franchiseId, franchises.id))
+		.leftJoin(comments, eq(comments.userId, users.id))
+		.leftJoin(commentPlace, eq(comments.venueId, commentPlace.id))
 		.where(eq(users.id, params.id))
-		.limit(1);
+		.orderBy(asc(comments.createdAt));
+	const row = rows[0];
 	if (!row) error(404, 'That account was not found.');
 
-	const [places, groups, comments] = await Promise.all([
+	const [places, groups] = await Promise.all([
 		db
 			.select({ id: venues.id, name: venues.name, district: venues.district })
 			.from(venues)
 			.orderBy(asc(venues.name)),
-		db.select({ id: franchises.id, name: franchises.name }).from(franchises).orderBy(asc(franchises.name)),
-		listCommentsByUser(row.id)
+		db.select({ id: franchises.id, name: franchises.name }).from(franchises).orderBy(asc(franchises.name))
 	]);
-
-	const place = places.find((item) => item.id === row.venueId) ?? null;
-	const franchise = groups.find((item) => item.id === row.franchiseId) ?? null;
 
 	return {
 		account: {
@@ -52,13 +63,25 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			role: row.role || 'user',
 			venueId: row.venueId,
 			franchiseId: row.franchiseId,
-			placeName: place ? `${place.name} · ${place.district}` : null,
-			franchiseName: franchise?.name ?? null
+			placeName: row.placeName ? `${row.placeName} · ${row.placeDistrict}` : null,
+			franchiseName: row.franchiseName
 		},
 		roles: ROLES,
 		places,
 		franchises: groups,
-		comments
+		comments: rows.flatMap((item) =>
+			item.commentId && item.commentVenue && item.commentSlug && item.commentAt
+				? [
+						{
+							id: item.commentId,
+							body: item.commentBody ?? '',
+							createdAt: item.commentAt.toISOString(),
+							venueName: item.commentVenue,
+							venueSlug: item.commentSlug
+						}
+					]
+				: []
+		)
 	};
 };
 

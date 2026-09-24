@@ -22,7 +22,13 @@
 							<span class="block font-medium">{account.name}</span>
 							<span class="text-sm text-muted">{account.email}</span>
 						</span>
-						<span class="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+						<span class="text-right">
+							{#if account.placeName}
+								<span class="block text-sm text-muted">{account.placeName}</span>
+							{:else if account.franchiseName}
+								<span class="block text-sm text-muted">{account.franchiseName}</span>
+							{/if}
+							<span class="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
 							{account.role === 'place_manager'
 								? 'Place manager'
 								: account.role === 'franchise_manager'
@@ -30,6 +36,7 @@
 									: account.role === 'superuser'
 										? 'Superuser'
 										: 'User'}
+							</span>
 						</span>
 					</a>
 				</li>

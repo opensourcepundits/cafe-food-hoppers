@@ -4,6 +4,7 @@ import { upsertSuperusers } from '../superusers';
 import { requiresSsl, resolveDatabaseUrl } from './env';
 import { USER_COLUMNS_SQL } from './user-columns';
 
+const SCHEMA_VERSION = 1;
 let pending: Promise<void> | undefined;
 
 export function requireDatabaseUrl(): string {
@@ -28,18 +29,44 @@ export function postgresOptions(url: string, max: number): postgres.Options<Reco
 
 /** Idempotent schema for serverless. No `drizzle-kit migrate` required. */
 export function ensureSchema(): Promise<void> {
-	pending ??= applySchema().catch((error) => {
-		pending = undefined;
-		throw error;
-	});
+	if (pending) return pending;
+	pending = applySchema()
+		.then((ready) => {
+			if (!ready) pending = undefined;
+		})
+		.catch((error) => {
+			pending = undefined;
+			throw error;
+		});
 	return pending;
 }
 
-async function applySchema(): Promise<void> {
+async function schemaIsCurrent(sql: postgres.Sql): Promise<boolean> {
+	try {
+		const rows = await sql<{ version: number }[]>`SELECT version FROM schema_meta WHERE id = 1`;
+		return Number(rows[0]?.version) >= SCHEMA_VERSION;
+	} catch {
+		return false;
+	}
+}
+
+async function applySchema(): Promise<boolean> {
 	const url = requireDatabaseUrl();
 	const sql = postgres(url, postgresOptions(url, 1));
 	try {
-		await sql.unsafe(`
+		if (await schemaIsCurrent(sql)) {
+			await seedSuperusers(sql);
+			return true;
+		}
+
+		const migrated = await sql.begin(async (tx) => {
+			await tx.unsafe(`SET LOCAL lock_timeout = '4s'`);
+			await tx.unsafe(`SET LOCAL statement_timeout = '20s'`);
+			const [lock] = await tx<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(714203) AS locked`;
+			if (!lock?.locked) return false;
+			if (await schemaIsCurrent(tx as unknown as postgres.Sql)) return true;
+
+			await tx.unsafe(`
 			CREATE TABLE IF NOT EXISTS venues (
 				id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 				name text NOT NULL,
@@ -110,14 +137,30 @@ async function applySchema(): Promise<void> {
 			FOR EACH ROW
 			EXECUTE FUNCTION set_updated_at();
 		`);
-		await sql.unsafe(USER_COLUMNS_SQL);
-		try {
-			const seeded = await upsertSuperusers(sql, env);
-			if (seeded) console.log(`Ensured ${seeded} superuser account${seeded === 1 ? '' : 's'}.`);
-		} catch (error) {
-			console.error('Superuser seed failed.', error);
-		}
+			await tx.unsafe(USER_COLUMNS_SQL);
+			await tx.unsafe(`
+				CREATE TABLE IF NOT EXISTS schema_meta (
+					id integer PRIMARY KEY,
+					version integer NOT NULL
+				);
+				INSERT INTO schema_meta (id, version) VALUES (1, ${SCHEMA_VERSION})
+				ON CONFLICT (id) DO UPDATE SET version = EXCLUDED.version;
+			`);
+			return true;
+		});
+
+		if (migrated) await seedSuperusers(sql);
+		return migrated;
 	} finally {
 		await sql.end({ timeout: 5 });
+	}
+}
+
+async function seedSuperusers(sql: postgres.Sql): Promise<void> {
+	try {
+		const seeded = await upsertSuperusers(sql, env);
+		if (seeded) console.log(`Ensured ${seeded} superuser account${seeded === 1 ? '' : 's'}.`);
+	} catch (error) {
+		console.error('Superuser seed failed.', error);
 	}
 }

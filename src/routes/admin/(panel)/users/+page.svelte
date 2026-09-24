@@ -23,6 +23,9 @@
 		A shop account can monitor and edit every placement you assign. A placement account can change only its one place.
 		Standard accounts still start with no access until you grant creator or editor.
 	</p>
+	{#if data.loadError}
+		<p class="mt-4 border border-accent px-3 py-2 text-sm text-accent">{data.loadError}</p>
+	{/if}
 	<p class="mt-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">
 		{data.accounts.length} {data.accounts.length === 1 ? 'account' : 'accounts'}
 	</p>

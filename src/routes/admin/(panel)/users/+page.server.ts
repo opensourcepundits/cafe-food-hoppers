@@ -1,4 +1,4 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { listRegisteredUsers, setAccountAccess, type AccountKind } from '$lib/server/auth';
 import { requireSuperuser } from '$lib/server/access';
 import { db } from '$lib/server/db';
@@ -15,10 +15,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				.from(venues)
 				.orderBy(venues.name)
 		]);
-		return { accounts, places, saved: url.searchParams.get('saved') === '1' };
+		return { accounts, places, saved: url.searchParams.get('saved') === '1', loadError: '' };
 	} catch (cause) {
 		console.error(cause);
-		error(503, 'Could not load accounts.');
+		const message = cause instanceof Error ? cause.message : 'Could not load accounts.';
+		return { accounts: [], places: [], saved: false, loadError: message };
 	}
 };
 

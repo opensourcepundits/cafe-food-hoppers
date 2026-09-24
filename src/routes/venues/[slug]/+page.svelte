@@ -64,7 +64,23 @@
 		{#if venue.isFeatured}
 			<p class="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">Featured</p>
 		{/if}
-		<h2 class="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{venue.name}</h2>
+		<div class="mt-1 flex flex-wrap items-center gap-3">
+			<h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">{venue.name}</h2>
+			{#if data.user}
+				<form method="POST" action="?/favourite">
+					<button type="submit" class="border border-ink px-3 py-1 text-sm">
+						{data.favourite ? 'Saved' : 'Save'}
+					</button>
+				</form>
+			{:else}
+				<a
+					href="/login?next=/venues/{venue.slug}"
+					class="border border-line px-3 py-1 text-sm text-muted hover:border-ink hover:text-ink"
+				>
+					Save
+				</a>
+			{/if}
+		</div>
 		{#if amenityLabels(venue.workInfo).length || verificationLabels(venue).length}
 			<ul class="mt-3 flex flex-wrap gap-1.5">
 				{#each amenityLabels(venue.workInfo) as label (label)}

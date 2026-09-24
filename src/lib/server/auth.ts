@@ -156,12 +156,7 @@ function formatWhen(value: Date | string | null): string | null {
 
 /** Every account except seeded superusers, with the places each one created. */
 export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
-	const lastSeenAt = sql<Date | string | null>`(
-		select max(${sessions.createdAt})
-		from ${sessions}
-		where ${sessions.userId} = ${users.id}
-	)`;
-	const [people, places, links] = await Promise.all([
+	const [people, places, links, seen] = await Promise.all([
 		db
 			.select({
 				id: users.id,
@@ -171,8 +166,7 @@ export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
 				canCreate: users.canCreate,
 				canEdit: users.canEdit,
 				venueId: users.venueId,
-				createdAt: users.createdAt,
-				lastSeenAt
+				createdAt: users.createdAt
 			})
 			.from(users)
 			.where(ne(users.role, 'superuser'))
@@ -187,8 +181,17 @@ export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
 			})
 			.from(venues)
 			.orderBy(venues.name),
-		db.select({ userId: userVenues.userId, venueId: userVenues.venueId }).from(userVenues)
+		db.select({ userId: userVenues.userId, venueId: userVenues.venueId }).from(userVenues),
+		db
+			.select({
+				userId: sessions.userId,
+				lastSeenAt: sql<Date | string | null>`max(${sessions.createdAt})`
+			})
+			.from(sessions)
+			.groupBy(sessions.userId)
 	]);
+
+	const lastSeen = new Map(seen.map((row) => [row.userId, row.lastSeenAt]));
 
 	const byCreator = new Map<string, CreatedPlace[]>();
 	for (const place of places) {
@@ -213,7 +216,7 @@ export async function listRegisteredUsers(): Promise<RegisteredAccount[]> {
 			email: row.email,
 			phone: row.phone,
 			joinedAt: formatWhen(row.createdAt) ?? '—',
-			lastSeenAt: formatWhen(row.lastSeenAt),
+			lastSeenAt: formatWhen(lastSeen.get(row.id) ?? null),
 			kind,
 			canCreate: legacyAdmin || row.canCreate,
 			canEdit: legacyAdmin || row.canEdit,
@@ -267,6 +270,27 @@ export async function setAccountAccess(
 			await tx.insert(userVenues).values(venueIds.map((venueId) => ({ userId, venueId })));
 		}
 	});
+	return { ok: true };
+}
+
+export async function changePassword(
+	userId: string,
+	current: string,
+	next: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+	if (next.length < 8) return { ok: false, error: 'Password must be at least 8 characters.' };
+	const [row] = await db
+		.select({ passwordHash: users.passwordHash })
+		.from(users)
+		.where(eq(users.id, userId))
+		.limit(1);
+	if (!row || !(await verifyPassword(current, row.passwordHash))) {
+		return { ok: false, error: 'Current password is wrong.' };
+	}
+	await db
+		.update(users)
+		.set({ passwordHash: await hashPassword(next), updatedAt: new Date() })
+		.where(eq(users.id, userId));
 	return { ok: true };
 }
 

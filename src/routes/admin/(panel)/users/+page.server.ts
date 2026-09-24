@@ -1,4 +1,4 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { listRegisteredUsers, setAccountAccess, type AccountKind } from '$lib/server/auth';
 import { requireSuperuser } from '$lib/server/access';
 import { db } from '$lib/server/db';
@@ -7,14 +7,19 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	requireSuperuser(locals.user);
-	const [accounts, places] = await Promise.all([
-		listRegisteredUsers(),
-		db
-			.select({ id: venues.id, name: venues.name, district: venues.district, slug: venues.slug })
-			.from(venues)
-			.orderBy(venues.name)
-	]);
-	return { accounts, places, saved: url.searchParams.get('saved') === '1' };
+	try {
+		const [accounts, places] = await Promise.all([
+			listRegisteredUsers(),
+			db
+				.select({ id: venues.id, name: venues.name, district: venues.district, slug: venues.slug })
+				.from(venues)
+				.orderBy(venues.name)
+		]);
+		return { accounts, places, saved: url.searchParams.get('saved') === '1' };
+	} catch (cause) {
+		console.error(cause);
+		error(503, 'Could not load accounts.');
+	}
 };
 
 export const actions: Actions = {

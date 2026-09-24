@@ -104,6 +104,23 @@ export const userVenues = pgTable(
 	(table) => [primaryKey({ columns: [table.userId, table.venueId] }), index('idx_user_venues_venue').on(table.venueId)]
 );
 
+export const favourites = pgTable(
+	'favourites',
+	{
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		venueId: uuid('venue_id')
+			.notNull()
+			.references(() => venues.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [
+		primaryKey({ columns: [table.userId, table.venueId] }),
+		index('idx_favourites_user').on(table.userId, table.createdAt)
+	]
+);
+
 export const comments = pgTable(
 	'comments',
 	{

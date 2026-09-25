@@ -156,6 +156,21 @@ export type MapPlace = {
 	district: string;
 	lat: number;
 	lng: number;
+	open: boolean;
+	openLate: boolean;
+	hours: string;
+	bits: string[];
+	special: string | null;
+	alert: boolean;
+};
+
+export type MapFrame = {
+	north: number;
+	south: number;
+	east: number;
+	west: number;
+	lat: number;
+	lng: number;
 };
 
 export type LiveVenue = Venue & {

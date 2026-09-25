@@ -1,8 +1,45 @@
 <script lang="ts">
 	import PlacesMap from '$lib/components/PlacesMap.svelte';
+	import VenueFilterBar from '$lib/components/VenueFilterBar.svelte';
+	import { distanceMeters, type MapFrame, type MapPlace } from '$lib/venue';
 
 	let { data } = $props();
 	let map: PlacesMap | undefined = $state();
+	let frame = $state<MapFrame | null>(null);
+
+	const ordered = $derived.by(() => orderPlaces(data.places, frame));
+	const inView = $derived.by(() => {
+		const view = frame;
+		if (!view) return ordered;
+		return ordered.filter((place) => inside(place, view));
+	});
+	const outside = $derived.by(() => {
+		const view = frame;
+		if (!view) return [];
+		return ordered.filter((place) => !inside(place, view));
+	});
+
+	function inside(place: MapPlace, view: MapFrame): boolean {
+		return (
+			place.lat <= view.north &&
+			place.lat >= view.south &&
+			place.lng <= view.east &&
+			place.lng >= view.west
+		);
+	}
+
+	function orderPlaces(places: MapPlace[], view: MapFrame | null): MapPlace[] {
+		if (!view) return places;
+		return [...places].sort((a, b) => {
+			const aIn = inside(a, view) ? 0 : 1;
+			const bIn = inside(b, view) ? 0 : 1;
+			if (aIn !== bIn) return aIn - bIn;
+			return (
+				distanceMeters(view.lat, view.lng, a.lat, a.lng) -
+				distanceMeters(view.lat, view.lng, b.lat, b.lng)
+			);
+		});
+	}
 </script>
 
 <svelte:head>
@@ -17,9 +54,11 @@
 	<p class="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">Map</p>
 	<h2 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Every place, on the island.</h2>
 	<p class="mt-3 text-sm leading-6 text-muted">
-		Pins are read from the Google Maps link on each place. Click a name to jump to it.
+		Filter the pins, pan the map to reorder the list, and click a pin for hours and setup.
 	</p>
 </section>
+
+<VenueFilterBar filters={data.filters} districts={data.districts} />
 
 <p class="mb-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">
 	{data.places.length} {data.places.length === 1 ? 'place' : 'places'}
@@ -30,21 +69,43 @@
 
 {#if data.places.length === 0}
 	<div class="border border-dashed border-line px-4 py-12 text-center text-sm text-muted">
-		No places have a Google Maps pin yet.
+		{#if data.missing > 0}
+			No places with a pin match those filters.
+		{:else}
+			No places have a Google Maps pin yet.
+		{/if}
 	</div>
 {:else}
-	<PlacesMap bind:this={map} places={data.places} />
-	<ul class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-		{#each data.places as place (place.id)}
-			<li class="flex items-baseline justify-between gap-3 border border-line px-3 py-2 hover:border-ink hover:bg-paper-2">
-				<button type="button" class="min-w-0 text-left" onclick={() => map?.focus(place.id)}>
-					<span class="block text-sm font-medium">{place.name}</span>
-					<span class="text-xs text-muted">{place.district}</span>
-				</button>
-				<a href="/venues/{place.slug}" class="shrink-0 text-xs underline decoration-line underline-offset-4">
-					Open
-				</a>
-			</li>
-		{/each}
-	</ul>
+	<PlacesMap bind:this={map} places={data.places} onview={(next) => (frame = next)} />
+	{#if inView.length}
+		<p class="mt-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">In this view</p>
+		<ul class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+			{#each inView as place (place.id)}
+				{@render card(place)}
+			{/each}
+		</ul>
+	{/if}
+	{#if outside.length}
+		<p class="mt-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">Outside this view</p>
+		<ul class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+			{#each outside as place (place.id)}
+				{@render card(place)}
+			{/each}
+		</ul>
+	{/if}
 {/if}
+
+{#snippet card(place: MapPlace)}
+	<li class="flex items-start justify-between gap-3 border border-line px-3 py-2 hover:border-ink hover:bg-paper-2">
+		<button type="button" class="min-w-0 text-left" onclick={() => map?.focus(place.id)}>
+			<span class="block text-sm font-medium">{place.name}</span>
+			<span class="text-xs text-muted">{place.district}</span>
+			<span class="mt-1 block text-xs text-muted">
+				{place.alert ? 'Alert' : place.open ? 'Open' : 'Closed'} · {place.hours}
+			</span>
+		</button>
+		<a href="/venues/{place.slug}" class="shrink-0 text-xs underline decoration-line underline-offset-4">
+			Open
+		</a>
+	</li>
+{/snippet}

@@ -96,12 +96,11 @@
 {/if}
 
 {#snippet card(place: MapPlace)}
-	<li class="flex items-start justify-between gap-3 border border-line px-3 py-2 hover:border-ink hover:bg-paper-2">
+	<li class="flex items-baseline justify-between gap-3 border border-line px-3 py-1.5 hover:border-ink hover:bg-paper-2">
 		<button type="button" class="min-w-0 text-left" onclick={() => map?.focus(place.id)}>
-			<span class="block text-sm font-medium">{place.name}</span>
-			<span class="text-xs text-muted">{place.district}</span>
-			<span class="mt-1 block text-xs text-muted">
-				{place.alert ? 'Alert' : place.open ? 'Open' : 'Closed'} · {place.hours}
+			<span class="block truncate text-sm font-medium">{place.name}</span>
+			<span class="block truncate text-xs text-muted">
+				{place.district} · {place.open ? 'Open' : 'Closed'} · {place.hours}
 			</span>
 		</button>
 		<a href="/venues/{place.slug}" class="shrink-0 text-xs underline decoration-line underline-offset-4">

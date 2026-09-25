@@ -22,45 +22,31 @@
 		reportView = onview;
 	});
 
+	function pinIcon(place: MapPlace) {
+		return leaflet?.divIcon({
+			className: place.open ? 'place-pin place-pin-open' : 'place-pin place-pin-closed',
+			html: '',
+			iconSize: [14, 14],
+			iconAnchor: [7, 7]
+		});
+	}
+
 	function popup(place: MapPlace): HTMLElement {
-		const root = document.createElement('div');
-		root.className = 'min-w-44';
+		const card = document.createElement('div');
 
 		const link = document.createElement('a');
 		link.href = `/venues/${place.slug}`;
 		link.textContent = place.name;
-		link.className = 'font-medium text-ink underline decoration-line underline-offset-4';
+		link.className = 'text-sm font-medium text-ink underline decoration-line underline-offset-2';
 
-		const district = document.createElement('p');
-		district.textContent = place.district;
-		district.className = 'mt-1 text-xs text-muted';
+		const detail = document.createElement('p');
+		detail.className = 'text-xs text-muted';
+		const status = place.open ? 'Open' : 'Closed';
+		const hours = place.openLate ? `${place.hours} · Late` : place.hours;
+		detail.textContent = `${place.district} · ${status} · ${hours}`;
 
-		const status = document.createElement('p');
-		status.className = 'mt-2 font-mono text-[10px] uppercase tracking-[0.16em]';
-		status.textContent = place.alert ? 'Alert' : place.open ? 'Open' : 'Closed';
-		status.classList.add(place.alert ? 'text-accent' : place.open ? 'text-open' : 'text-closed');
-
-		const hours = document.createElement('p');
-		hours.className = 'mt-1 text-xs text-muted';
-		hours.textContent = place.openLate ? `${place.hours} · Late` : place.hours;
-
-		root.append(link, district, status, hours);
-
-		if (place.special) {
-			const special = document.createElement('p');
-			special.className = 'mt-2 border-l-2 border-accent pl-2 text-xs';
-			special.textContent = place.special;
-			root.append(special);
-		}
-
-		if (place.bits.length) {
-			const bits = document.createElement('p');
-			bits.className = 'mt-2 text-xs text-muted';
-			bits.textContent = place.bits.join(' · ');
-			root.append(bits);
-		}
-
-		return root;
+		card.append(link, detail);
+		return card;
 	}
 
 	function sync(list: MapPlace[]) {
@@ -73,24 +59,20 @@
 			markers.delete(id);
 		}
 
-		const icon = leaflet.divIcon({
-			className: 'place-pin',
-			html: '',
-			iconSize: [14, 14],
-			iconAnchor: [7, 7]
-		});
-
 		for (const place of list) {
+			const icon = pinIcon(place);
+			if (!icon) continue;
 			const existing = markers.get(place.id);
 			if (existing) {
 				existing.setLatLng([place.lat, place.lng]);
+				existing.setIcon(icon);
 				existing.setPopupContent(popup(place));
 				continue;
 			}
 			const marker = leaflet
 				.marker([place.lat, place.lng], { icon, title: place.name, keyboard: true })
 				.addTo(map)
-				.bindPopup(popup(place));
+				.bindPopup(popup(place), { minWidth: 0, maxWidth: 220 });
 			markers.set(place.id, marker);
 		}
 
@@ -173,11 +155,18 @@
 
 <style>
 	:global(.place-pin) {
-		background: var(--color-accent);
 		border: 2px solid var(--color-ink);
 		border-radius: 999px;
 		box-shadow: 2px 2px 0 0 var(--color-ink);
 		cursor: pointer;
+	}
+
+	:global(.place-pin-open) {
+		background: var(--color-open);
+	}
+
+	:global(.place-pin-closed) {
+		background: #c2412d;
 	}
 
 	:global(.leaflet-popup-content-wrapper) {
@@ -188,7 +177,8 @@
 	}
 
 	:global(.leaflet-popup-content) {
-		margin: 10px 12px;
+		margin: 6px 8px;
+		line-height: 1.25;
 		font-family: var(--font-sans);
 	}
 

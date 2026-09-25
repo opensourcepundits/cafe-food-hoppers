@@ -1,10 +1,14 @@
 import { error } from '@sveltejs/kit';
-import { listMapPlaces } from '$lib/server/venues';
+import { DISTRICTS } from '$lib/venue';
+import { listMapPlaces, parseFilters } from '$lib/server/venues';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ url }) => {
+	const filters = parseFilters(url);
+
 	try {
-		return await listMapPlaces();
+		const result = await listMapPlaces(filters);
+		return { ...result, filters, districts: DISTRICTS };
 	} catch (cause) {
 		console.error(cause);
 		error(503, 'Database unavailable.');

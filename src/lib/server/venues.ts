@@ -19,7 +19,13 @@ import {
 	type MenuCategory,
 	type OpeningHours,
 	type Special,
+	amenityLabels,
+	hoursLabel,
+	noiseLabel,
+	outletRatingLabel,
+	outletRatingOf,
 	parseMapsPin,
+	wifiLabel,
 	type MapPlace,
 	type SpecialFeedItem,
 	type Venue,
@@ -357,25 +363,45 @@ export function placePin(venue: Pick<Venue, 'lat' | 'lng' | 'contact'>): { lat: 
 	return null;
 }
 
-export async function listMapPlaces(): Promise<{ places: MapPlace[]; missing: number }> {
-	const rows = await db.select().from(venues).orderBy(venues.name);
+function toMapPlace(venue: LiveVenue, pin: { lat: number; lng: number }): MapPlace {
+	const bits = [
+		venue.workFriendly ? 'Work friendly' : null,
+		wifiLabel(venue.workInfo),
+		outletRatingLabel(outletRatingOf(venue.workInfo)),
+		noiseLabel(venue.workInfo.noise_level),
+		...amenityLabels(venue.workInfo)
+	].filter((value): value is string => Boolean(value));
+
+	return {
+		id: venue.id,
+		name: venue.name,
+		slug: venue.slug,
+		district: venue.district,
+		lat: pin.lat,
+		lng: pin.lng,
+		open: venue.open,
+		openLate: venue.openLate,
+		hours: hoursLabel(venue.openingHours),
+		bits: bits.slice(0, 5),
+		special: venue.ongoingSpecials[0]?.title ?? venue.upcomingSpecials[0]?.title ?? null,
+		alert: venue.alerts.length > 0
+	};
+}
+
+export async function listMapPlaces(
+	filters: VenueFilters
+): Promise<{ places: MapPlace[]; missing: number }> {
+	const matched = await listVenues(filters);
 	const places: MapPlace[] = [];
 	let missing = 0;
 
-	for (const venue of rows.map(mapVenue)) {
+	for (const venue of matched) {
 		const pin = placePin(venue);
 		if (!pin) {
 			missing += 1;
 			continue;
 		}
-		places.push({
-			id: venue.id,
-			name: venue.name,
-			slug: venue.slug,
-			district: venue.district,
-			lat: pin.lat,
-			lng: pin.lng
-		});
+		places.push(toMapPlace(venue, pin));
 	}
 
 	return { places, missing };

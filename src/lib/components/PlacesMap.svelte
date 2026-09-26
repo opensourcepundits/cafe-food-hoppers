@@ -34,8 +34,8 @@
 		return leaflet?.divIcon({
 			className: `pin-icon${pulse}`,
 			html: `<span class="pin-ring"></span><span class="pin-ring pin-ring-late"></span><span class="pin-dot ${tone}"></span>`,
-			iconSize: [48, 48],
-			iconAnchor: [24, 24]
+			iconSize: [72, 72],
+			iconAnchor: [36, 36]
 		});
 	}
 
@@ -96,7 +96,7 @@
 			const marker = leaflet
 				.marker([place.lat, place.lng], { icon, title: place.name, keyboard: true })
 				.addTo(map)
-				.bindPopup(popup(place), { minWidth: 160, maxWidth: 240, autoPan: true })
+				.bindPopup(popup(place), { minWidth: 160, maxWidth: 240, autoPan: false })
 				.on('click', () => {
 					center(place.id);
 					reportSelect?.(place);
@@ -126,7 +126,9 @@
 	function center(id: string) {
 		const marker = markers.get(id);
 		if (!map || !marker) return;
-		map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 15), { duration: 0.45 });
+		map.stop();
+		const zoom = Math.max(map.getZoom(), 15);
+		map.setView(marker.getLatLng(), zoom, { animate: false });
 	}
 
 	export function focus(id: string) {
@@ -152,23 +154,28 @@
 				})
 				.addTo(next);
 
+			let viewTimer: ReturnType<typeof setTimeout> | undefined;
 			const publish = () => {
-				const bounds = next.getBounds();
-				const center = next.getCenter();
-				reportView?.({
-					north: bounds.getNorth(),
-					south: bounds.getSouth(),
-					east: bounds.getEast(),
-					west: bounds.getWest(),
-					lat: center.lat,
-					lng: center.lng
-				});
+				clearTimeout(viewTimer);
+				viewTimer = setTimeout(() => {
+					const bounds = next.getBounds();
+					const point = next.getCenter();
+					reportView?.({
+						north: bounds.getNorth(),
+						south: bounds.getSouth(),
+						east: bounds.getEast(),
+						west: bounds.getWest(),
+						lat: point.lat,
+						lng: point.lng
+					});
+				}, 250);
 			};
 			next.on('moveend', publish);
 
 			map = next;
 			publish();
 			remove = () => {
+				clearTimeout(viewTimer);
 				markers.clear();
 				next.remove();
 				map = undefined;
@@ -232,21 +239,21 @@
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		width: 14px;
-		height: 14px;
-		margin: -7px 0 0 -7px;
-		border: 2px solid var(--color-ink);
+		width: 22px;
+		height: 22px;
+		margin: -11px 0 0 -11px;
+		border: 3px solid #fff;
 		border-radius: 999px;
-		box-shadow: 2px 2px 0 0 var(--color-ink);
+		box-shadow: 0 0 0 2px #111, 0 2px 8px rgba(0, 0, 0, 0.45);
 		cursor: pointer;
 	}
 
 	:global(.pin-dot-open) {
-		background: var(--color-open);
+		background: #128a52;
 	}
 
 	:global(.pin-dot-closed) {
-		background: #c2412d;
+		background: #e11d2e;
 	}
 
 	:global(.pin-ring) {
@@ -260,15 +267,15 @@
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		width: 18px;
-		height: 18px;
-		margin: -9px 0 0 -9px;
+		width: 28px;
+		height: 28px;
+		margin: -14px 0 0 -14px;
 		border-radius: 999px;
 		pointer-events: none;
 	}
 
 	:global(.pin-pulse-ongoing .pin-ring) {
-		border: 2px solid var(--color-open);
+		border: 3px solid #128a52;
 		animation: pin-pulse-ongoing 1.6s ease-out infinite;
 	}
 
@@ -277,7 +284,7 @@
 	}
 
 	:global(.pin-pulse-upcoming .pin-ring) {
-		border: 2px dashed #c4841d;
+		border: 3px dashed #e09a12;
 		animation: pin-pulse-upcoming 2.2s ease-in-out infinite;
 	}
 
@@ -286,7 +293,7 @@
 	}
 
 	:global(.pin-pulse-ending .pin-ring) {
-		border: 3px solid #c2412d;
+		border: 4px solid #e11d2e;
 		animation: pin-pulse-ending 0.55s ease-out infinite;
 	}
 

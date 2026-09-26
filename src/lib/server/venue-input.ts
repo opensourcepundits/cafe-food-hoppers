@@ -126,6 +126,7 @@ function parseWorkInfo(value: unknown): WorkInfo {
 		outdoor_seating: Boolean(input.outdoor_seating),
 		lighting,
 		lighting_notes: asString(input.lighting_notes) || undefined,
+		parking: asString(input.parking) || undefined,
 		toilet: asString(input.toilet) || undefined,
 		cell_reception: asString(input.cell_reception) || undefined,
 		ergonomic_index: ERGONOMIC.has(ergo as ErgonomicIndex) ? (ergo as ErgonomicIndex) : undefined,

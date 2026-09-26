@@ -5,10 +5,14 @@
 
 	let {
 		places,
-		onview
+		selected = null,
+		onview,
+		onselect
 	}: {
 		places: MapPlace[];
+		selected?: MapPlace | null;
 		onview?: (frame: MapFrame) => void;
+		onselect?: (place: MapPlace | null) => void;
 	} = $props();
 
 	let root: HTMLDivElement | undefined = $state();
@@ -16,10 +20,12 @@
 	const markers = new Map<string, Marker>();
 	let leaflet: typeof import('leaflet') | undefined;
 	let reportView: ((frame: MapFrame) => void) | undefined;
+	let reportSelect: ((place: MapPlace | null) => void) | undefined;
 	let fittedKey = '';
 
 	$effect(() => {
 		reportView = onview;
+		reportSelect = onselect;
 	});
 
 	function pinIcon(place: MapPlace) {
@@ -29,24 +35,6 @@
 			iconSize: [14, 14],
 			iconAnchor: [7, 7]
 		});
-	}
-
-	function popup(place: MapPlace): HTMLElement {
-		const card = document.createElement('div');
-
-		const link = document.createElement('a');
-		link.href = `/venues/${place.slug}`;
-		link.textContent = place.name;
-		link.className = 'text-sm font-medium text-ink underline decoration-line underline-offset-2';
-
-		const detail = document.createElement('p');
-		detail.className = 'text-xs text-muted';
-		const status = place.open ? 'Open' : 'Closed';
-		const hours = place.openLate ? `${place.hours} · Late` : place.hours;
-		detail.textContent = `${place.district} · ${status} · ${hours}`;
-
-		card.append(link, detail);
-		return card;
 	}
 
 	function sync(list: MapPlace[]) {
@@ -66,13 +54,15 @@
 			if (existing) {
 				existing.setLatLng([place.lat, place.lng]);
 				existing.setIcon(icon);
-				existing.setPopupContent(popup(place));
 				continue;
 			}
 			const marker = leaflet
 				.marker([place.lat, place.lng], { icon, title: place.name, keyboard: true })
 				.addTo(map)
-				.bindPopup(popup(place), { minWidth: 0, maxWidth: 220 });
+				.on('click', () => {
+					center(place.id);
+					reportSelect?.(place);
+				});
 			markers.set(place.id, marker);
 		}
 
@@ -94,6 +84,16 @@
 		if (!map) return;
 		sync(list);
 	});
+
+	function center(id: string) {
+		const marker = markers.get(id);
+		if (!map || !marker) return;
+		map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 15), { duration: 0.45 });
+	}
+
+	export function focus(id: string) {
+		center(id);
+	}
 
 	onMount(() => {
 		let cancelled = false;
@@ -142,16 +142,52 @@
 		};
 	});
 
-	export function focus(id: string) {
-		const marker = markers.get(id);
-		if (!map || !marker) return;
-		const point = marker.getLatLng();
-		map.flyTo(point, Math.max(map.getZoom(), 15), { duration: 0.6 });
-		marker.openPopup();
-	}
 </script>
 
-<div bind:this={root} class="h-[min(70vh,640px)] w-full border border-line bg-paper-2"></div>
+<div class="relative">
+	<div bind:this={root} class="h-[min(70vh,640px)] w-full border border-line bg-paper-2"></div>
+	{#if selected}
+		<div class="absolute bottom-3 left-3 z-20 max-w-xs border border-ink bg-paper px-3 py-2 shadow-[3px_3px_0_0_var(--color-ink)]">
+			<div class="flex items-start justify-between gap-3">
+				<a
+					href="/venues/{selected.slug}"
+					class="min-w-0 truncate text-sm font-medium underline decoration-line underline-offset-2"
+				>
+					{selected.name}
+				</a>
+				<button
+					type="button"
+					class="shrink-0 text-sm leading-none text-muted"
+					aria-label="Close"
+					onclick={() => onselect?.(null)}
+				>
+					×
+				</button>
+			</div>
+			<p class="mt-1 text-xs text-muted">
+				{selected.closes ? `Closes ${selected.closes}` : 'Closed today'}
+			</p>
+			{#if selected.wifi || selected.noise}
+				<ul class="mt-1.5 flex flex-wrap gap-1">
+					{#if selected.wifi}
+						<li class="border border-line px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+							{selected.wifi}
+						</li>
+					{/if}
+					{#if selected.noise}
+						<li class="border border-line px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+							{selected.noise}
+						</li>
+					{/if}
+				</ul>
+			{/if}
+			<p class="mt-1.5 text-xs text-muted">
+				{selected.lighting.length ? selected.lighting.join(' · ') : 'Light not listed'}
+			</p>
+			<p class="text-xs text-muted">{selected.parking || 'Parking not listed'}</p>
+		</div>
+	{/if}
+</div>
 
 <style>
 	:global(.place-pin) {
@@ -167,24 +203,6 @@
 
 	:global(.place-pin-closed) {
 		background: #c2412d;
-	}
-
-	:global(.leaflet-popup-content-wrapper) {
-		border-radius: 0;
-		background: var(--color-paper);
-		color: var(--color-ink);
-		box-shadow: 3px 3px 0 0 var(--color-ink);
-	}
-
-	:global(.leaflet-popup-content) {
-		margin: 6px 8px;
-		line-height: 1.25;
-		font-family: var(--font-sans);
-	}
-
-	:global(.leaflet-popup-tip) {
-		background: var(--color-paper);
-		box-shadow: none;
 	}
 
 	:global(.leaflet-control-attribution) {

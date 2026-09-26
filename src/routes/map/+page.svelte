@@ -118,6 +118,7 @@
 			onclick={() => {
 				selected = null;
 				map?.focus(place.id);
+				selected = place;
 			}}
 		>
 			<span class="block truncate text-sm font-medium">{place.name}</span>

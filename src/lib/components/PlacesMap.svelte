@@ -29,14 +29,48 @@
 	});
 
 	function pinIcon(place: MapPlace) {
-		const tone = place.open ? 'place-pin-open' : 'place-pin-closed';
-		const pulse = place.specialPulse ? ` place-pin-pulse-${place.specialPulse}` : '';
+		const tone = place.open ? 'pin-dot-open' : 'pin-dot-closed';
+		const pulse = place.specialPulse ? ` pin-pulse-${place.specialPulse}` : '';
 		return leaflet?.divIcon({
-			className: `place-pin ${tone}${pulse}`,
-			html: '',
-			iconSize: [14, 14],
-			iconAnchor: [7, 7]
+			className: `pin-icon${pulse}`,
+			html: `<span class="pin-ring"></span><span class="pin-ring pin-ring-late"></span><span class="pin-dot ${tone}"></span>`,
+			iconSize: [48, 48],
+			iconAnchor: [24, 24]
 		});
+	}
+
+	function popup(place: MapPlace): HTMLElement {
+		const card = document.createElement('div');
+		card.className = 'pin-card';
+
+		const link = document.createElement('a');
+		link.href = `/venues/${place.slug}`;
+		link.textContent = place.name;
+		link.className = 'pin-card-name';
+
+		const hours = document.createElement('p');
+		hours.className = 'pin-card-line';
+		hours.textContent = `${place.open ? 'Open' : 'Closed'} · ${place.hours} · ${place.wifi ?? 'No WiFi'}`;
+
+		card.append(link, hours);
+
+		if (place.noise) {
+			const noise = document.createElement('p');
+			noise.className = 'pin-card-line';
+			noise.textContent = place.noise;
+			card.append(noise);
+		}
+
+		const light = document.createElement('p');
+		light.className = 'pin-card-line';
+		light.textContent = place.lighting.length ? place.lighting.join(' · ') : 'Light not listed';
+
+		const parking = document.createElement('p');
+		parking.className = 'pin-card-line';
+		parking.textContent = place.parking || 'Parking not listed';
+
+		card.append(light, parking);
+		return card;
 	}
 
 	function sync(list: MapPlace[]) {
@@ -56,11 +90,13 @@
 			if (existing) {
 				existing.setLatLng([place.lat, place.lng]);
 				existing.setIcon(icon);
+				existing.setPopupContent(popup(place));
 				continue;
 			}
 			const marker = leaflet
 				.marker([place.lat, place.lng], { icon, title: place.name, keyboard: true })
 				.addTo(map)
+				.bindPopup(popup(place), { minWidth: 160, maxWidth: 240, autoPan: true })
 				.on('click', () => {
 					center(place.id);
 					reportSelect?.(place);
@@ -95,6 +131,7 @@
 
 	export function focus(id: string) {
 		center(id);
+		markers.get(id)?.openPopup();
 	}
 
 	onMount(() => {
@@ -186,77 +223,146 @@
 </div>
 
 <style>
-	:global(.place-pin) {
+	:global(.pin-icon) {
+		background: transparent;
+		border: none;
+	}
+
+	:global(.pin-dot) {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 14px;
+		height: 14px;
+		margin: -7px 0 0 -7px;
 		border: 2px solid var(--color-ink);
 		border-radius: 999px;
 		box-shadow: 2px 2px 0 0 var(--color-ink);
 		cursor: pointer;
 	}
 
-	:global(.place-pin-open) {
+	:global(.pin-dot-open) {
 		background: var(--color-open);
 	}
 
-	:global(.place-pin-closed) {
+	:global(.pin-dot-closed) {
 		background: #c2412d;
 	}
 
-	:global(.place-pin-pulse-ongoing),
-	:global(.place-pin-pulse-ending),
-	:global(.place-pin-pulse-upcoming) {
-		overflow: visible;
+	:global(.pin-ring) {
+		display: none;
 	}
 
-	:global(.place-pin-pulse-ongoing::after),
-	:global(.place-pin-pulse-ending::after),
-	:global(.place-pin-pulse-upcoming::after) {
-		content: '';
+	:global(.pin-pulse-ongoing .pin-ring),
+	:global(.pin-pulse-ending .pin-ring),
+	:global(.pin-pulse-upcoming .pin-ring) {
+		display: block;
 		position: absolute;
-		inset: -5px;
+		top: 50%;
+		left: 50%;
+		width: 18px;
+		height: 18px;
+		margin: -9px 0 0 -9px;
 		border-radius: 999px;
 		pointer-events: none;
 	}
 
-	:global(.place-pin-pulse-ongoing) {
-		box-shadow: 0 0 0 2px var(--color-open);
-	}
-
-	:global(.place-pin-pulse-ongoing::after) {
+	:global(.pin-pulse-ongoing .pin-ring) {
 		border: 2px solid var(--color-open);
-		animation: pin-pulse 1.8s ease-out infinite;
+		animation: pin-pulse-ongoing 1.6s ease-out infinite;
 	}
 
-	:global(.place-pin-pulse-upcoming) {
-		box-shadow: 0 0 0 2px #c4841d;
+	:global(.pin-pulse-ongoing .pin-ring-late) {
+		animation-delay: 0.8s;
 	}
 
-	:global(.place-pin-pulse-upcoming::after) {
+	:global(.pin-pulse-upcoming .pin-ring) {
 		border: 2px dashed #c4841d;
-		animation: pin-pulse 2.4s ease-in-out infinite;
+		animation: pin-pulse-upcoming 2.2s ease-in-out infinite;
 	}
 
-	:global(.place-pin-pulse-ending) {
-		box-shadow: 0 0 0 2px #c2412d;
+	:global(.pin-pulse-upcoming .pin-ring-late) {
+		display: none;
 	}
 
-	:global(.place-pin-pulse-ending::after) {
-		border: 2px solid #c2412d;
-		animation: pin-pulse 0.7s ease-out infinite;
+	:global(.pin-pulse-ending .pin-ring) {
+		border: 3px solid #c2412d;
+		animation: pin-pulse-ending 0.55s ease-out infinite;
 	}
 
-	@keyframes pin-pulse {
-		0% {
-			transform: scale(0.6);
-			opacity: 0.85;
-		}
-		100% {
-			transform: scale(2.1);
-			opacity: 0;
-		}
+	:global(.pin-pulse-ending .pin-ring-late) {
+		animation-delay: 0.28s;
+	}
+
+	:global(.pin-card-name) {
+		display: block;
+		font-size: 14px;
+		font-weight: 500;
+		color: var(--color-ink);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	:global(.pin-card-line) {
+		margin-top: 2px;
+		font-size: 12px;
+		line-height: 1.3;
+		color: var(--color-muted, #6b6458);
+	}
+
+	:global(.leaflet-popup-content-wrapper) {
+		border-radius: 0;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		box-shadow: 3px 3px 0 0 var(--color-ink);
+	}
+
+	:global(.leaflet-popup-content) {
+		margin: 8px 10px;
+		font-family: var(--font-sans);
+	}
+
+	:global(.leaflet-popup-tip) {
+		background: var(--color-paper);
 	}
 
 	:global(.leaflet-control-attribution) {
 		background: color-mix(in srgb, var(--color-paper) 88%, transparent);
 		font-size: 10px;
+	}
+
+	:global {
+		@keyframes pin-pulse-ongoing {
+			0% {
+				transform: scale(0.7);
+				opacity: 0.9;
+			}
+			100% {
+				transform: scale(2.4);
+				opacity: 0;
+			}
+		}
+
+		@keyframes pin-pulse-upcoming {
+			0% {
+				transform: scale(0.8);
+				opacity: 0.95;
+			}
+			100% {
+				transform: scale(2);
+				opacity: 0;
+			}
+		}
+
+		@keyframes pin-pulse-ending {
+			0% {
+				transform: scale(0.6);
+				opacity: 1;
+			}
+			100% {
+				transform: scale(2.6);
+				opacity: 0;
+			}
+		}
 	}
 </style>

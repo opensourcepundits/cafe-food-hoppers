@@ -96,7 +96,7 @@
 			const marker = leaflet
 				.marker([place.lat, place.lng], { icon, title: place.name, keyboard: true })
 				.addTo(map)
-				.bindPopup(popup(place), { minWidth: 160, maxWidth: 240, autoPan: true })
+				.bindPopup(popup(place), { minWidth: 160, maxWidth: 240, autoPan: false })
 				.on('click', () => {
 					center(place.id);
 					reportSelect?.(place);
@@ -126,7 +126,9 @@
 	function center(id: string) {
 		const marker = markers.get(id);
 		if (!map || !marker) return;
-		map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 15), { duration: 0.45 });
+		map.stop();
+		const zoom = Math.max(map.getZoom(), 15);
+		map.setView(marker.getLatLng(), zoom, { animate: false });
 	}
 
 	export function focus(id: string) {
@@ -152,23 +154,28 @@
 				})
 				.addTo(next);
 
+			let viewTimer: ReturnType<typeof setTimeout> | undefined;
 			const publish = () => {
-				const bounds = next.getBounds();
-				const center = next.getCenter();
-				reportView?.({
-					north: bounds.getNorth(),
-					south: bounds.getSouth(),
-					east: bounds.getEast(),
-					west: bounds.getWest(),
-					lat: center.lat,
-					lng: center.lng
-				});
+				clearTimeout(viewTimer);
+				viewTimer = setTimeout(() => {
+					const bounds = next.getBounds();
+					const point = next.getCenter();
+					reportView?.({
+						north: bounds.getNorth(),
+						south: bounds.getSouth(),
+						east: bounds.getEast(),
+						west: bounds.getWest(),
+						lat: point.lat,
+						lng: point.lng
+					});
+				}, 250);
 			};
 			next.on('moveend', publish);
 
 			map = next;
 			publish();
 			remove = () => {
+				clearTimeout(viewTimer);
 				markers.clear();
 				next.remove();
 				map = undefined;

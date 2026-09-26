@@ -122,7 +122,7 @@
 		>
 			<span class="block truncate text-sm font-medium">{place.name}</span>
 			<span class="block truncate text-xs text-muted">
-				{place.district} · {place.open ? 'Open' : 'Closed'} · {place.hours}
+				{place.open ? 'Open' : 'Closed'} · {place.hours} · {place.wifi ?? 'No WiFi'}
 			</span>
 		</button>
 		<a href="/venues/{place.slug}" class="shrink-0 text-xs underline decoration-line underline-offset-4">

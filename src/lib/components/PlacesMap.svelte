@@ -29,8 +29,10 @@
 	});
 
 	function pinIcon(place: MapPlace) {
+		const tone = place.open ? 'place-pin-open' : 'place-pin-closed';
+		const pulse = place.specialPulse ? ` place-pin-pulse-${place.specialPulse}` : '';
 		return leaflet?.divIcon({
-			className: place.open ? 'place-pin place-pin-open' : 'place-pin place-pin-closed',
+			className: `place-pin ${tone}${pulse}`,
 			html: '',
 			iconSize: [14, 14],
 			iconAnchor: [7, 7]
@@ -166,19 +168,13 @@
 			</div>
 			<p class="mt-1 text-xs text-muted">
 				{selected.closes ? `Closes ${selected.closes}` : 'Closed today'}
+				· {selected.wifi ?? 'No WiFi'}
 			</p>
-			{#if selected.wifi || selected.noise}
+			{#if selected.noise}
 				<ul class="mt-1.5 flex flex-wrap gap-1">
-					{#if selected.wifi}
-						<li class="border border-line px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-							{selected.wifi}
-						</li>
-					{/if}
-					{#if selected.noise}
-						<li class="border border-line px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-							{selected.noise}
-						</li>
-					{/if}
+					<li class="border border-line px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+						{selected.noise}
+					</li>
 				</ul>
 			{/if}
 			<p class="mt-1.5 text-xs text-muted">
@@ -203,6 +199,60 @@
 
 	:global(.place-pin-closed) {
 		background: #c2412d;
+	}
+
+	:global(.place-pin-pulse-ongoing),
+	:global(.place-pin-pulse-ending),
+	:global(.place-pin-pulse-upcoming) {
+		overflow: visible;
+	}
+
+	:global(.place-pin-pulse-ongoing::after),
+	:global(.place-pin-pulse-ending::after),
+	:global(.place-pin-pulse-upcoming::after) {
+		content: '';
+		position: absolute;
+		inset: -5px;
+		border-radius: 999px;
+		pointer-events: none;
+	}
+
+	:global(.place-pin-pulse-ongoing) {
+		box-shadow: 0 0 0 2px var(--color-open);
+	}
+
+	:global(.place-pin-pulse-ongoing::after) {
+		border: 2px solid var(--color-open);
+		animation: pin-pulse 1.8s ease-out infinite;
+	}
+
+	:global(.place-pin-pulse-upcoming) {
+		box-shadow: 0 0 0 2px #c4841d;
+	}
+
+	:global(.place-pin-pulse-upcoming::after) {
+		border: 2px dashed #c4841d;
+		animation: pin-pulse 2.4s ease-in-out infinite;
+	}
+
+	:global(.place-pin-pulse-ending) {
+		box-shadow: 0 0 0 2px #c2412d;
+	}
+
+	:global(.place-pin-pulse-ending::after) {
+		border: 2px solid #c2412d;
+		animation: pin-pulse 0.7s ease-out infinite;
+	}
+
+	@keyframes pin-pulse {
+		0% {
+			transform: scale(0.6);
+			opacity: 0.85;
+		}
+		100% {
+			transform: scale(2.1);
+			opacity: 0;
+		}
 	}
 
 	:global(.leaflet-control-attribution) {

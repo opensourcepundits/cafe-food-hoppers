@@ -88,6 +88,7 @@ export type Special = {
 };
 
 export type SpecialTiming = 'upcoming' | 'ongoing' | 'ended';
+export type SpecialPulse = 'ongoing' | 'ending' | 'upcoming';
 
 export type SpecialFeedItem = {
 	venueId: string;
@@ -162,6 +163,7 @@ export type MapPlace = {
 	hours: string;
 	closes: string | null;
 	wifi: string | null;
+	specialPulse: SpecialPulse | null;
 	noise: string | null;
 	lighting: string[];
 	parking: string | null;
@@ -596,6 +598,30 @@ export function ongoingSpecials(specials: Special[], at = new Date()): Special[]
 
 export function upcomingSpecials(specials: Special[], at = new Date()): Special[] {
 	return specials.filter((item) => specialTiming(item, at) === 'upcoming');
+}
+
+const SPECIAL_SOON_MS = 60 * 60 * 1000;
+
+export function specialPulse(ongoing: Special[], upcoming: Special[], at = new Date()): SpecialPulse | null {
+	const now = at.getTime();
+	let hasOngoing = false;
+	let ending = false;
+
+	for (const special of ongoing) {
+		hasOngoing = true;
+		if (!special.ends_at) continue;
+		const end = Date.parse(special.ends_at);
+		if (!Number.isNaN(end) && end >= now && end - now <= SPECIAL_SOON_MS) ending = true;
+	}
+
+	if (ending) return 'ending';
+	if (hasOngoing) return 'ongoing';
+
+	const startingSoon = upcoming.some((special) => {
+		const start = Date.parse(special.starts_at);
+		return !Number.isNaN(start) && start > now && start - now <= SPECIAL_SOON_MS;
+	});
+	return startingSoon ? 'upcoming' : null;
 }
 
 function formatMuDate(iso: string): string {

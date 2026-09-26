@@ -116,7 +116,7 @@
 			type="button"
 			class="min-w-0 text-left"
 			onclick={() => {
-				selected = place;
+				selected = null;
 				map?.focus(place.id);
 			}}
 		>

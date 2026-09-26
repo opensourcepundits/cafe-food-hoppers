@@ -132,8 +132,8 @@
 	}
 
 	export function focus(id: string) {
+		map?.closePopup();
 		center(id);
-		markers.get(id)?.openPopup();
 	}
 
 	onMount(() => {

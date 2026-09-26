@@ -6,6 +6,11 @@
 	let { data } = $props();
 	let map: PlacesMap | undefined = $state();
 	let frame = $state<MapFrame | null>(null);
+	let selected = $state<MapPlace | null>(null);
+
+	$effect(() => {
+		if (selected && !data.places.some((place) => place.id === selected.id)) selected = null;
+	});
 
 	const ordered = $derived.by(() => orderPlaces(data.places, frame));
 	const inView = $derived.by(() => {
@@ -76,7 +81,13 @@
 		{/if}
 	</div>
 {:else}
-	<PlacesMap bind:this={map} places={data.places} onview={(next) => (frame = next)} />
+	<PlacesMap
+		bind:this={map}
+		places={data.places}
+		{selected}
+		onview={(next) => (frame = next)}
+		onselect={(place) => (selected = place)}
+	/>
 	{#if inView.length}
 		<p class="mt-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">In this view</p>
 		<ul class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -96,11 +107,22 @@
 {/if}
 
 {#snippet card(place: MapPlace)}
-	<li class="flex items-baseline justify-between gap-3 border border-line px-3 py-1.5 hover:border-ink hover:bg-paper-2">
-		<button type="button" class="min-w-0 text-left" onclick={() => map?.focus(place.id)}>
+	<li
+		class="flex items-baseline justify-between gap-3 border px-3 py-1.5 hover:border-ink hover:bg-paper-2 {selected?.id === place.id
+			? 'border-ink bg-paper-2'
+			: 'border-line'}"
+	>
+		<button
+			type="button"
+			class="min-w-0 text-left"
+			onclick={() => {
+				selected = place;
+				map?.focus(place.id);
+			}}
+		>
 			<span class="block truncate text-sm font-medium">{place.name}</span>
 			<span class="block truncate text-xs text-muted">
-				{place.district} · {place.open ? 'Open' : 'Closed'} · {place.hours}
+				{place.open ? 'Open' : 'Closed'} · {place.hours} · {place.wifi ?? 'No WiFi'}
 			</span>
 		</button>
 		<a href="/venues/{place.slug}" class="shrink-0 text-xs underline decoration-line underline-offset-4">

@@ -44,6 +44,7 @@ export type WorkInfo = {
 	outdoor_seating?: boolean;
 	lighting?: LightingType[];
 	lighting_notes?: string;
+	parking?: string;
 	toilet?: string;
 	cell_reception?: string;
 	ergonomic_index?: ErgonomicIndex;
@@ -87,6 +88,7 @@ export type Special = {
 };
 
 export type SpecialTiming = 'upcoming' | 'ongoing' | 'ended';
+export type SpecialPulse = 'ongoing' | 'ending' | 'upcoming';
 
 export type SpecialFeedItem = {
 	venueId: string;
@@ -159,6 +161,12 @@ export type MapPlace = {
 	open: boolean;
 	openLate: boolean;
 	hours: string;
+	closes: string | null;
+	wifi: string | null;
+	specialPulse: SpecialPulse | null;
+	noise: string | null;
+	lighting: string[];
+	parking: string | null;
 	bits: string[];
 	special: string | null;
 	alert: boolean;
@@ -353,6 +361,26 @@ export function dayHoursLabel(day: DayHours | undefined, closedText = 'Closed'):
 export function hoursLabel(hours: OpeningHours, at = new Date()): string {
 	const clock = mauritiusClock(at);
 	return dayHoursLabel(hours[clock.weekday], 'Closed today');
+}
+
+export function closingTime(hours: OpeningHours, at = new Date()): string | null {
+	const clock = mauritiusClock(at);
+	for (const span of daySpans(hours[previousWeekday(clock.weekday)])) {
+		const open = parseMinutes(span.open);
+		const close = parseMinutes(span.close);
+		if (close <= open && clock.minutes < close) return span.close;
+	}
+
+	const spans = daySpans(hours[clock.weekday]);
+	if (!spans.length) return null;
+	const active = spans.find((span) => {
+		const open = parseMinutes(span.open);
+		const close = parseMinutes(span.close);
+		if (close > open) return clock.minutes >= open && clock.minutes < close;
+		if (close === open) return false;
+		return clock.minutes >= open;
+	});
+	return (active ?? spans[spans.length - 1]).close;
 }
 
 export function weekdayLabel(day: Weekday): string {
@@ -570,6 +598,30 @@ export function ongoingSpecials(specials: Special[], at = new Date()): Special[]
 
 export function upcomingSpecials(specials: Special[], at = new Date()): Special[] {
 	return specials.filter((item) => specialTiming(item, at) === 'upcoming');
+}
+
+const SPECIAL_SOON_MS = 60 * 60 * 1000;
+
+export function specialPulse(ongoing: Special[], upcoming: Special[], at = new Date()): SpecialPulse | null {
+	const now = at.getTime();
+	let hasOngoing = false;
+	let ending = false;
+
+	for (const special of ongoing) {
+		hasOngoing = true;
+		if (!special.ends_at) continue;
+		const end = Date.parse(special.ends_at);
+		if (!Number.isNaN(end) && end >= now && end - now <= SPECIAL_SOON_MS) ending = true;
+	}
+
+	if (ending) return 'ending';
+	if (hasOngoing) return 'ongoing';
+
+	const startingSoon = upcoming.some((special) => {
+		const start = Date.parse(special.starts_at);
+		return !Number.isNaN(start) && start > now && start - now <= SPECIAL_SOON_MS;
+	});
+	return startingSoon ? 'upcoming' : null;
 }
 
 function formatMuDate(iso: string): string {

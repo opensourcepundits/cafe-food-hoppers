@@ -62,6 +62,7 @@
 		outletRating: (outletRatingOf(venue?.workInfo ?? {}) ?? 'moderate') as OutletRating,
 		lighting: venue?.workInfo.lighting ?? [],
 		lightingNotes: venue?.workInfo.lighting_notes ?? '',
+		parking: venue?.workInfo.parking ?? '',
 		toilet: venue?.workInfo.toilet ?? '',
 		cellReception: venue?.workInfo.cell_reception ?? '',
 		ergonomic: venue?.workInfo.ergonomic_index ?? 'moderate',
@@ -109,6 +110,7 @@
 	let outletRating = $state<OutletRating>(seed.outletRating);
 	let lighting = $state<LightingType[]>(seed.lighting);
 	let lightingNotes = $state(seed.lightingNotes);
+	let parking = $state(seed.parking);
 	let toilet = $state(seed.toilet);
 	let cellReception = $state(seed.cellReception);
 	let ergonomic = $state(seed.ergonomic);
@@ -165,6 +167,7 @@
 				outlet_rating: outletRating,
 				lighting,
 				lighting_notes: lightingNotes,
+				parking,
 				toilet,
 				cell_reception: cellReception,
 				ergonomic_index: ergonomic,
@@ -593,6 +596,19 @@
 		<div class="mt-4">
 			<Field label="Lighting notes">
 				<textarea class="{field} min-h-20" bind:value={lightingNotes}></textarea>
+			</Field>
+		</div>
+	</details>
+
+	<details class="group" open>
+		<summary class={summary}>Parking {@render toggle()}</summary>
+		<div class="mt-4">
+			<Field label="Parking situation">
+				<textarea
+					class="{field} min-h-20"
+					bind:value={parking}
+					placeholder="Street parking, a lot behind the cafe, paid mall parking, or none."
+				></textarea>
 			</Field>
 		</div>
 	</details>

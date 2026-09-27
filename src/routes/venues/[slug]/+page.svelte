@@ -12,6 +12,7 @@
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import MapEmbed from '$lib/components/MapEmbed.svelte';
 	import ImageCarousel from '$lib/components/ImageCarousel.svelte';
+	import MenuList from '$lib/components/MenuList.svelte';
 	import {
 		amenityLabels,
 		dayHoursLabel,
@@ -22,7 +23,6 @@
 		hoursLabel,
 		lightingLabel,
 		mapsUrl,
-		mur,
 		noiseLabel,
 		orderedWeekdays,
 		outletLabel,
@@ -176,35 +176,7 @@
 <div class="grid gap-10 lg:grid-cols-[1.4fr_0.8fr]">
 	<section>
 		<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Menu</h3>
-		{#if venue.menu.length === 0}
-			<p class="mt-4 text-sm text-muted">No menu listed yet.</p>
-		{:else}
-			<div class="mt-4 space-y-8">
-				{#each venue.menu as category (category.category)}
-					<div>
-						<h4 class="text-base font-medium">{category.category}</h4>
-						<ul class="mt-3 divide-y divide-line border-y border-line">
-							{#each category.items as item (item.name)}
-								<li class="flex items-baseline justify-between gap-4 py-3">
-									<div>
-										<p class="text-sm">{item.name}</p>
-										{#if item.description}
-											<p class="mt-0.5 text-xs leading-5 text-muted">{item.description}</p>
-										{/if}
-										{#if item.tags?.length}
-											<p class="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-												{item.tags.join(' · ')}
-											</p>
-										{/if}
-									</div>
-									<p class="shrink-0 font-mono text-sm">{mur(item.price_mur)}</p>
-								</li>
-							{/each}
-						</ul>
-					</div>
-				{/each}
-			</div>
-		{/if}
+		<MenuList menu={venue.menu} />
 	</section>
 
 	<aside class="space-y-8">

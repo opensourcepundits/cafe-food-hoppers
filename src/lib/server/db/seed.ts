@@ -75,10 +75,28 @@ const seedVenues: NewVenue[] = [
 		menu: [
 			{
 				category: 'Coffee',
+				price_labels: ['Small', 'Regular', 'Large'],
 				items: [
-					{ name: 'Espresso', price_mur: 90 },
-					{ name: 'Flat white', description: 'Double shot, locally roasted.', price_mur: 140 },
-					{ name: 'Iced latte', price_mur: 150, tags: ['cold'] }
+					{ name: 'Espresso', price_mur: 90, prices: [{ label: 'Small', price_mur: 90 }] },
+					{
+						name: 'Flat white',
+						description: 'Double shot, locally roasted.',
+						price_mur: 120,
+						prices: [
+							{ label: 'Small', price_mur: 120 },
+							{ label: 'Regular', price_mur: 140 },
+							{ label: 'Large', price_mur: 160 }
+						]
+					},
+					{
+						name: 'Iced latte',
+						price_mur: 150,
+						prices: [
+							{ label: 'Regular', price_mur: 150 },
+							{ label: 'Large', price_mur: 170 }
+						],
+						tags: ['cold']
+					}
 				]
 			},
 			{

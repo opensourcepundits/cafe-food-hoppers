@@ -18,9 +18,12 @@
 		<h2 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{data.name}</h2>
 	</div>
 	<div class="flex flex-wrap gap-2">
-		{#if data.canCreate || data.user?.canEdit}
+		{#if data.canManage}
 			<a href="/admin" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
 				Manage places
+			</a>
+			<a href="/admin/alerts" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
+				Alerts
 			</a>
 		{/if}
 		<button

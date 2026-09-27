@@ -310,6 +310,18 @@ export async function setVenueBadges(
 	return row ? mapVenue(row) : null;
 }
 
+export async function setVenueAnnouncements(
+	id: string,
+	announcements: Venue['announcements']
+): Promise<Venue | null> {
+	const [row] = await db
+		.update(venues)
+		.set({ announcements, updatedAt: new Date() })
+		.where(eq(venues.id, id))
+		.returning();
+	return row ? mapVenue(row) : null;
+}
+
 export async function updateVenue(id: string, input: VenueWrite): Promise<Venue | null> {
 	const slug = await uniqueSlug(input.slug, id);
 	const [row] = await db

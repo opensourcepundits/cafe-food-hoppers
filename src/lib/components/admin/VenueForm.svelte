@@ -450,23 +450,6 @@
 		);
 	}
 
-	function addAnnouncement() {
-		announcements = [
-			...announcements,
-			{
-				key: nid(),
-				id: nid(),
-				type: 'notice',
-				title: '',
-				body: '',
-				starts_at: '',
-				ends_at: null,
-				startsLocal: '',
-				endsLocal: ''
-			}
-		];
-	}
-
 	const pin = $derived(
 		parseMapsPin(googleMaps) ??
 			(venue?.lat !== null && venue?.lat !== undefined && venue?.lng !== null && venue?.lng !== undefined
@@ -1075,49 +1058,6 @@
 			{/each}
 		</ul>
 		<button type="button" class="{btnGhost} mt-4" onclick={addSpecial}>Add special</button>
-	</details>
-
-	<details class="group" open>
-		<summary class={summary}>Alerts {@render toggle()}</summary>
-		<ul class="mt-4 space-y-3">
-			{#each announcements as alert (alert.key)}
-				<li>
-					<details class="group/item border border-line" open>
-						<summary
-							class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted [&::-webkit-details-marker]:hidden"
-						>
-							{alert.title || 'Alert'}
-							<span class="group-open/item:hidden">Show</span>
-							<span class="hidden group-open/item:inline">Hide</span>
-						</summary>
-						<div class="grid gap-3 border-t border-line p-4">
-							<select class={field} bind:value={alert.type}>
-								{#each ['notice', 'event', 'closure', 'alert'] as type (type)}
-									<option value={type}>{type}</option>
-								{/each}
-							</select>
-							<input class={field} placeholder="Title" bind:value={alert.title} />
-							<textarea class="{field} min-h-20" placeholder="Details" bind:value={alert.body}></textarea>
-							<div class="grid gap-3 sm:grid-cols-2">
-								<Field label="Starts">
-									<input class={field} type="datetime-local" bind:value={alert.startsLocal} />
-								</Field>
-								<Field label="Ends">
-									<input class={field} type="datetime-local" bind:value={alert.endsLocal} />
-								</Field>
-							</div>
-							<button
-								type="button"
-								class="{btnGhost} w-fit"
-								onclick={() => (announcements = announcements.filter((item) => item.key !== alert.key))}
-								>Remove</button
-							>
-						</div>
-					</details>
-				</li>
-			{/each}
-		</ul>
-		<button type="button" class="{btnGhost} mt-4" onclick={addAnnouncement}>Add alert</button>
 	</details>
 
 	<div class="sticky bottom-0 flex gap-3 border-t border-line bg-paper py-4">

@@ -99,15 +99,23 @@ export type SpecialFeedItem = {
 	status: Exclude<SpecialTiming, 'ended'>;
 };
 
+export type MenuPrice = {
+	label: string;
+	price_mur: number;
+};
+
 export type MenuItem = {
 	name: string;
 	description?: string;
 	price_mur: number;
+	prices?: MenuPrice[];
 	tags?: string[];
 };
 
 export type MenuCategory = {
 	category: string;
+	/** Column names in display order. An empty string is an unnamed price. */
+	price_labels?: string[];
 	items: MenuItem[];
 };
 
@@ -227,6 +235,39 @@ const WEEKDAY_LABEL: Record<Weekday, string> = {
 
 export function mur(amount: number): string {
 	return `Rs ${Math.round(amount).toLocaleString('en-MU')}`;
+}
+
+export function itemPricePoints(item: MenuItem): MenuPrice[] {
+	if (item.prices?.length) return item.prices;
+	return [{ label: '', price_mur: item.price_mur }];
+}
+
+export function priceForLabel(item: MenuItem, label: string): number | null {
+	const key = label.trim().toLowerCase();
+	const match = itemPricePoints(item).find((price) => price.label.trim().toLowerCase() === key);
+	return match ? match.price_mur : null;
+}
+
+/** Size columns for a category. Null when every item is a single unnamed price. */
+export function menuPriceColumns(category: MenuCategory): string[] | null {
+	const labels: string[] = [];
+	const seen = new Set<string>();
+	const add = (label: string) => {
+		const trimmed = label.trim();
+		const key = trimmed.toLowerCase();
+		if (seen.has(key)) return;
+		seen.add(key);
+		labels.push(trimmed);
+	};
+
+	for (const label of category.price_labels ?? []) add(label);
+	for (const item of category.items) {
+		for (const price of itemPricePoints(item)) add(price.label);
+	}
+
+	const used = labels.filter((label) => category.items.some((item) => priceForLabel(item, label) !== null));
+	if (!used.length || (used.length === 1 && used[0] === '')) return null;
+	return used;
 }
 
 export function mapsUrl(lat: number, lng: number): string {

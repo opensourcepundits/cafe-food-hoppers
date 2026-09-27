@@ -12,6 +12,7 @@ import {
 	type HourSpan,
 	type MenuCategory,
 	type MenuItem,
+	type MenuPrice,
 	type NoiseLevel,
 	type OpeningHours,
 	type ErgonomicIndex,
@@ -220,8 +221,36 @@ function parseMenu(value: unknown): MenuCategory[] {
 		const name = asString(raw.category);
 		const items = Array.isArray(raw.items) ? raw.items.flatMap(parseMenuItem) : [];
 		if (!name || items.length === 0) return [];
-		return [{ category: name, items }];
+		const price_labels = parsePriceLabels(raw.price_labels);
+		return [price_labels ? { category: name, price_labels, items } : { category: name, items }];
 	});
+}
+
+function parsePriceLabels(value: unknown): string[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const labels: string[] = [];
+	const seen = new Set<string>();
+	for (const item of value) {
+		if (typeof item !== 'string') continue;
+		const label = item.trim();
+		const key = label.toLowerCase();
+		if (seen.has(key)) continue;
+		seen.add(key);
+		labels.push(label);
+	}
+	return labels.length ? labels : undefined;
+}
+
+function parsePrices(value: unknown): MenuPrice[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const prices: MenuPrice[] = [];
+	for (const item of value) {
+		const raw = asRecord(item);
+		const price = asNumber(raw.price_mur, true);
+		if (price === null || price < 0) continue;
+		prices.push({ label: asString(raw.label), price_mur: price });
+	}
+	return prices.length ? prices : undefined;
 }
 
 function parseMenuItem(value: unknown): MenuItem[] {
@@ -234,11 +263,13 @@ function parseMenuItem(value: unknown): MenuItem[] {
 				.split(',')
 				.map((tag) => tag.trim())
 				.filter(Boolean);
+	const prices = parsePrices(raw.prices);
 	return [
 		{
 			name,
 			description: asString(raw.description) || undefined,
-			price_mur: Math.max(0, asNumber(raw.price_mur) ?? 0),
+			price_mur: prices?.[0]?.price_mur ?? Math.max(0, asNumber(raw.price_mur) ?? 0),
+			...(prices ? { prices } : {}),
 			tags: tags.length ? tags : undefined
 		}
 	];

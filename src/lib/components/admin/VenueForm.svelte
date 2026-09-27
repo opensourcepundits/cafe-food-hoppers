@@ -33,8 +33,15 @@
 		type Weekday
 	} from '$lib/venue';
 
-	type DraftItem = MenuItem & { key: string };
-	type DraftCategory = { key: string; category: string; items: DraftItem[] };
+	type DraftColumn = { key: string; label: string };
+	type DraftItem = {
+		key: string;
+		name: string;
+		description: string;
+		tags: string[];
+		amounts: Record<string, string>;
+	};
+	type DraftCategory = { key: string; category: string; columns: DraftColumn[]; items: DraftItem[] };
 	type DraftSpecial = Special & { key: string; startsLocal: string; endsLocal: string };
 	type DraftAnnouncement = Announcement & { key: string; startsLocal: string; endsLocal: string };
 
@@ -183,15 +190,30 @@
 			},
 			openingHours: normalizeOpeningHours(hours),
 			contact: { phone, instagram, website, email, google_maps: googleMaps },
-			menu: menu.map((category) => ({
-				category: category.category,
-				items: category.items.map((item) => ({
-					name: item.name,
-					description: item.description,
-					price_mur: Number(item.price_mur) || 0,
-					tags: item.tags
-				}))
-			})),
+			menu: menu.map((category) => {
+				const labels = category.columns.map((column) => column.label.trim());
+				const sized = labels.some((label) => label.length > 0) || labels.length > 1;
+				return {
+					category: category.category,
+					...(sized ? { price_labels: labels } : {}),
+					items: category.items.map((item) => {
+						const prices = category.columns.flatMap((column) => {
+							const raw = item.amounts[column.key]?.trim() ?? '';
+							if (!raw) return [];
+							const price = Number(raw);
+							if (!Number.isFinite(price)) return [];
+							return [{ label: column.label.trim(), price_mur: Math.max(0, price) }];
+						});
+						return {
+							name: item.name,
+							description: item.description,
+							price_mur: prices[0]?.price_mur ?? 0,
+							...(sized && prices.length ? { prices } : {}),
+							tags: item.tags
+						};
+					})
+				};
+			}),
 			specials: specials.map((item) => ({
 				id: item.id,
 				title: item.title,
@@ -217,13 +239,24 @@
 
 	function toMenu(categories: MenuCategory[] | undefined): DraftCategory[] {
 		if (!categories?.length) {
-			return [{ key: nid(), category: 'Coffee', items: [emptyItem()] }];
+			const columns = emptyColumns();
+			return [{ key: nid(), category: 'Coffee', columns, items: [emptyItem(columns)] }];
 		}
-		return categories.map((category) => ({
-			key: nid(),
-			category: category.category,
-			items: category.items.map((item) => ({ ...item, key: nid() }))
-		}));
+		return categories.map((category) => {
+			const columns = columnsFrom(category);
+			return {
+				key: nid(),
+				category: category.category,
+				columns,
+				items: category.items.map((item) => ({
+					key: nid(),
+					name: item.name,
+					description: item.description ?? '',
+					tags: item.tags ?? [],
+					amounts: amountsFor(item, columns)
+				}))
+			};
+		});
 	}
 
 	function toSpecials(items: Special[] | undefined): DraftSpecial[] {
@@ -244,12 +277,83 @@
 		}));
 	}
 
-	function emptyItem(): DraftItem {
-		return { key: nid(), name: '', price_mur: 0, description: '', tags: [] };
+	function emptyColumns(): DraftColumn[] {
+		return [{ key: nid(), label: '' }];
+	}
+
+	function emptyItem(columns: DraftColumn[]): DraftItem {
+		return {
+			key: nid(),
+			name: '',
+			description: '',
+			tags: [],
+			amounts: Object.fromEntries(columns.map((column) => [column.key, '']))
+		};
+	}
+
+	function columnsFrom(category: MenuCategory): DraftColumn[] {
+		return draftColumnLabels(category).map((label) => ({ key: nid(), label }));
+	}
+
+	function draftColumnLabels(category: MenuCategory): string[] {
+		const labels: string[] = [];
+		const seen = new Set<string>();
+		const add = (label: string) => {
+			const trimmed = label.trim();
+			const key = trimmed.toLowerCase();
+			if (seen.has(key)) return;
+			seen.add(key);
+			labels.push(trimmed);
+		};
+
+		if (category.price_labels?.length) {
+			for (const label of category.price_labels) add(label);
+			for (const item of category.items) {
+				for (const price of item.prices ?? []) add(price.label);
+			}
+			return labels.length ? labels : [''];
+		}
+
+		let unlabeled = false;
+		for (const item of category.items) {
+			if (!item.prices?.length) {
+				unlabeled = true;
+				continue;
+			}
+			for (const price of item.prices) {
+				if (!price.label.trim()) {
+					unlabeled = true;
+					continue;
+				}
+				add(price.label);
+			}
+		}
+		if (!labels.length || unlabeled) return ['', ...labels];
+		return labels;
+	}
+
+	function amountsFor(item: MenuItem, columns: DraftColumn[]): Record<string, string> {
+		const points = item.prices?.length ? item.prices : [{ label: '', price_mur: item.price_mur }];
+		const used = new Set<number>();
+		const amounts: Record<string, string> = {};
+		for (const column of columns) {
+			const key = column.label.trim().toLowerCase();
+			const index = points.findIndex(
+				(price, priceIndex) => !used.has(priceIndex) && price.label.trim().toLowerCase() === key
+			);
+			if (index === -1) {
+				amounts[column.key] = '';
+				continue;
+			}
+			used.add(index);
+			amounts[column.key] = String(points[index].price_mur);
+		}
+		return amounts;
 	}
 
 	function addCategory() {
-		menu = [...menu, { key: nid(), category: '', items: [emptyItem()] }];
+		const columns = emptyColumns();
+		menu = [...menu, { key: nid(), category: '', columns, items: [emptyItem(columns)] }];
 	}
 
 	function removeCategory(key: string) {
@@ -258,7 +362,51 @@
 
 	function addItem(key: string) {
 		menu = menu.map((category) =>
-			category.key === key ? { ...category, items: [...category.items, emptyItem()] } : category
+			category.key === key ? { ...category, items: [...category.items, emptyItem(category.columns)] } : category
+		);
+	}
+
+	function addPriceColumn(categoryKey: string) {
+		const column: DraftColumn = { key: nid(), label: '' };
+		menu = menu.map((category) =>
+			category.key === categoryKey
+				? {
+						...category,
+						columns: [...category.columns, column],
+						items: category.items.map((item) => ({
+							...item,
+							amounts: { ...item.amounts, [column.key]: '' }
+						}))
+					}
+				: category
+		);
+	}
+
+	function removePriceColumn(categoryKey: string, columnKey: string) {
+		menu = menu.map((category) => {
+			if (category.key !== categoryKey || category.columns.length < 2) return category;
+			return {
+				...category,
+				columns: category.columns.filter((column) => column.key !== columnKey),
+				items: category.items.map((item) => {
+					const amounts = { ...item.amounts };
+					delete amounts[columnKey];
+					return { ...item, amounts };
+				})
+			};
+		});
+	}
+
+	function setAmount(categoryKey: string, itemKey: string, columnKey: string, value: string) {
+		menu = menu.map((category) =>
+			category.key === categoryKey
+				? {
+						...category,
+						items: category.items.map((item) =>
+							item.key === itemKey ? { ...item, amounts: { ...item.amounts, [columnKey]: value } } : item
+						)
+					}
+				: category
 		);
 	}
 
@@ -763,34 +911,89 @@
 						</div>
 						<button type="button" class={btnGhost} onclick={() => removeCategory(category.key)}>Remove</button>
 					</div>
-					<ul class="mt-4 space-y-3">
-						{#each category.items as item (item.key)}
-							<li class="grid gap-2 border border-line p-3 sm:grid-cols-[1fr_1fr_6rem_auto]">
-								<input class={field} placeholder="Item" bind:value={item.name} />
-								<input class={field} placeholder="Description" bind:value={item.description} />
-								<input
-									class={field}
-									type="number"
-									min="0"
-									step="1"
-									placeholder="Rs"
-									bind:value={item.price_mur}
-								/>
-								<button type="button" class={btnGhost} onclick={() => removeItem(category.key, item.key)}
-									>Remove</button
-								>
-								<div class="sm:col-span-4">
-									<input
-										class={field}
-										placeholder="Tags, comma separated"
-										value={tagsValue(item)}
-										oninput={(event) => setTags(category.key, item.key, event.currentTarget.value)}
-									/>
-								</div>
-							</li>
-						{/each}
-					</ul>
-					<button type="button" class="{btnGhost} mt-3" onclick={() => addItem(category.key)}>Add item</button>
+					<p class="mt-4 text-xs text-muted">
+						Add a column for each size. Leave a price blank when that item does not come in that size.
+					</p>
+					<div class="mt-3 overflow-x-auto [container-type:inline-size]">
+						<table class="w-max min-w-full border-collapse">
+							<thead>
+								<tr>
+									<th class="pb-2 pr-2 text-left font-mono text-[10px] font-normal uppercase tracking-[0.14em] text-muted">Item</th>
+									<th class="pb-2 pr-2 text-left font-mono text-[10px] font-normal uppercase tracking-[0.14em] text-muted">Description</th>
+									{#each category.columns as column (column.key)}
+										<th class="px-1 pb-2 text-left font-normal">
+											<div class="relative w-[7.25rem]">
+												<input
+													class="{field} px-2 py-1.5 text-xs {category.columns.length > 1 ? 'pr-6' : ''}"
+													placeholder={category.columns.length > 1 ? 'Size' : 'Price'}
+													aria-label="Price column name"
+													bind:value={column.label}
+												/>
+												{#if category.columns.length > 1}
+													<button
+														type="button"
+														class="absolute top-1/2 right-1 -translate-y-1/2 px-1 text-sm leading-none text-muted hover:text-ink"
+														aria-label="Remove price column"
+														onclick={() => removePriceColumn(category.key, column.key)}>×</button
+													>
+												{/if}
+											</div>
+										</th>
+									{/each}
+								</tr>
+							</thead>
+							<tbody>
+								{#each category.items as item (item.key)}
+									<tr>
+										<td class="py-1 pr-2 align-top">
+											<input class="{field} min-w-[9rem]" placeholder="Item" bind:value={item.name} />
+										</td>
+										<td class="py-1 pr-2 align-top">
+											<input class="{field} min-w-[9rem]" placeholder="Description" bind:value={item.description} />
+										</td>
+										{#each category.columns as column (column.key)}
+											<td class="px-1 py-1 align-top">
+												<input
+													class="{field} w-[7.25rem]"
+													type="number"
+													min="0"
+													step="1"
+													placeholder="—"
+													aria-label={`${column.label || 'Price'} for ${item.name || 'item'}`}
+													value={item.amounts[column.key] ?? ''}
+													oninput={(event) =>
+														setAmount(category.key, item.key, column.key, event.currentTarget.value)}
+												/>
+											</td>
+										{/each}
+									</tr>
+									<tr>
+										<td class="pb-3" colspan={category.columns.length + 2}>
+											<div class="sticky left-0 flex w-[100cqi] gap-2 pr-1">
+												<input
+													class="{field} min-w-0 flex-1"
+													placeholder="Tags, comma separated"
+													value={tagsValue(item)}
+													oninput={(event) => setTags(category.key, item.key, event.currentTarget.value)}
+												/>
+												<button
+													type="button"
+													class="{btnGhost} shrink-0"
+													onclick={() => removeItem(category.key, item.key)}>Remove</button
+												>
+											</div>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+					<div class="mt-3 flex flex-wrap gap-2">
+						<button type="button" class={btnGhost} onclick={() => addPriceColumn(category.key)}
+							>Add price column</button
+						>
+						<button type="button" class={btnGhost} onclick={() => addItem(category.key)}>Add item</button>
+					</div>
 					</div>
 				</details>
 			{/each}

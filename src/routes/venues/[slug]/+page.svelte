@@ -77,7 +77,7 @@
 				</form>
 				{#if data.favourite && justSaved}
 					<div class="mt-3 w-full basis-full border border-line px-4 py-3">
-						<p class="text-sm">Get a notification when an event here is about to start.</p>
+						<p class="text-sm">Get a notification when an event here is about to start, or when a promotion starts now.</p>
 						<div class="mt-3">
 							<PushToggle vapidPublicKey={data.vapidPublicKey} />
 						</div>

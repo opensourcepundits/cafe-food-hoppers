@@ -3,7 +3,7 @@ import { createVenue } from '$lib/server/venues';
 import { isUniqueViolation, payloadFromForm } from '$lib/server/venue-input';
 import { filesFromForm, persistVenueImages } from '$lib/server/storage';
 import { requireCanCreate } from '$lib/server/access';
-import { dispatchDueEvents } from '$lib/server/push';
+import { dispatchDueEvents, dispatchPromotionsNow } from '$lib/server/push';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -22,6 +22,7 @@ export const actions: Actions = {
 		try {
 			const images = await persistVenueImages(parsed.value.images, filesFromForm(data), [], parsed.value.slug);
 			const venue = await createVenue({ ...parsed.value, images }, user.id);
+			await dispatchPromotionsNow(venue.id, parsed.promoteNow);
 			await dispatchDueEvents(venue.id);
 			redirect(303, `/admin/venues/${venue.id}?saved=1`);
 		} catch (cause) {

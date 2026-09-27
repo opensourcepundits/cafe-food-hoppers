@@ -6,7 +6,7 @@ export type PlaceNotice = {
 	url: string;
 	tag: string;
 	eventKey: string;
-	phase: 'soon' | 'starting';
+	phase: 'soon' | 'starting' | 'now';
 	startsAt: string;
 };
 
@@ -46,6 +46,21 @@ export function dueEventNotices(source: NoticeSource, at = new Date()): PlaceNot
 		});
 	}
 	return notices;
+}
+
+/** A promotion an editor started on the spot, rather than a scheduled start. */
+export function promotionNowNotice(source: NoticeSource, special: Special): PlaceNotice {
+	const key = `special:${special.id}`;
+	const startsAt = new Date(special.starts_at).toISOString();
+	return {
+		title: clip(`${source.name}: ${special.title} is on now`, 80),
+		body: clip(special.body || special.title),
+		url: `/venues/${source.slug}`,
+		tag: `now-${key}`,
+		eventKey: key,
+		phase: 'now',
+		startsAt
+	};
 }
 
 function clip(text: string, max = 140): string {

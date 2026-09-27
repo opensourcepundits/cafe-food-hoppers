@@ -156,7 +156,7 @@ export const pushDeliveries = pgTable(
 			.notNull()
 			.references(() => venues.id, { onDelete: 'cascade' }),
 		eventKey: text('event_key').notNull(),
-		phase: text('phase').$type<'soon' | 'starting'>().notNull(),
+		phase: text('phase').$type<'soon' | 'starting' | 'now'>().notNull(),
 		startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 	},

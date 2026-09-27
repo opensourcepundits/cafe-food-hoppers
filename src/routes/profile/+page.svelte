@@ -65,7 +65,7 @@
 <section class="mb-10">
 	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Notifications</h3>
 	<p class="mt-3 max-w-lg text-sm leading-6 text-muted">
-		This device is notified when a saved place has an event starting within the hour, and again as it starts.
+		This device is notified when a saved place has an event starting within the hour, again as it starts, and when a promotion is started now.
 	</p>
 	<div class="mt-3">
 		<PushToggle vapidPublicKey={data.vapidPublicKey} />

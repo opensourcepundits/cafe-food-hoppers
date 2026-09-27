@@ -47,7 +47,9 @@ const LIGHTING = new Set<LightingType>(['natural', 'warm', 'bright', 'dim']);
 const ERGONOMIC = new Set<ErgonomicIndex>(['low', 'moderate', 'high']);
 const NOISE = new Set<NoiseLevel>(['quiet', 'moderate', 'loud']);
 
-export function parseVenuePayload(raw: unknown): { ok: true; value: VenueWrite } | { ok: false; error: string } {
+export function parseVenuePayload(
+	raw: unknown
+): { ok: true; value: VenueWrite; promoteNow: string[] } | { ok: false; error: string } {
 	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
 		return { ok: false, error: 'Invalid venue payload.' };
 	}
@@ -67,8 +69,10 @@ export function parseVenuePayload(raw: unknown): { ok: true; value: VenueWrite }
 		return { ok: false, error: 'Paste a Google Maps pin that includes the place location.' };
 	}
 
+	const specials = parseSpecials(input.specials);
 	return {
 		ok: true,
+		promoteNow: specials.promoteNow,
 		value: {
 			name,
 			slug,
@@ -80,7 +84,7 @@ export function parseVenuePayload(raw: unknown): { ok: true; value: VenueWrite }
 			workInfo: parseWorkInfo(input.workInfo),
 			openingHours: parseHours(input.openingHours),
 			announcements: parseAnnouncements(input.announcements),
-			specials: parseSpecials(input.specials),
+			specials: specials.items,
 			menu: parseMenu(input.menu),
 			contact,
 			images: parseImages(input.images)
@@ -88,7 +92,9 @@ export function parseVenuePayload(raw: unknown): { ok: true; value: VenueWrite }
 	};
 }
 
-export function payloadFromForm(data: FormData): { ok: true; value: VenueWrite } | { ok: false; error: string } {
+export function payloadFromForm(
+	data: FormData
+): { ok: true; value: VenueWrite; promoteNow: string[] } | { ok: false; error: string } {
 	const raw = data.get('payload');
 	if (typeof raw !== 'string' || !raw.trim()) {
 		return { ok: false, error: 'Nothing to save.' };
@@ -193,18 +199,24 @@ function parseAnnouncements(value: unknown): Announcement[] {
 	});
 }
 
-function parseSpecials(value: unknown): Special[] {
-	if (!Array.isArray(value)) return [];
-	return value.flatMap((item, index) => {
+function parseSpecials(value: unknown): { items: Special[]; promoteNow: string[] } {
+	if (!Array.isArray(value)) return { items: [], promoteNow: [] };
+	const promoteNow: string[] = [];
+	const items = value.flatMap((item, index) => {
 		const raw = asRecord(item);
 		const title = asString(raw.title);
 		const body = asString(raw.body);
-		const starts = datetimeLocalToIso(asString(raw.starts_at)) ?? asString(raw.starts_at);
+		const startNow = raw.promote_now === true;
+		const starts = startNow
+			? new Date().toISOString()
+			: (datetimeLocalToIso(asString(raw.starts_at)) ?? asString(raw.starts_at));
 		if (!title || !body || !starts) return [];
 		const ends = datetimeLocalToIso(asString(raw.ends_at)) ?? (asString(raw.ends_at) || null);
+		const id = asString(raw.id) || `special-${index + 1}`;
+		if (startNow) promoteNow.push(id);
 		return [
 			{
-				id: asString(raw.id) || `special-${index + 1}`,
+				id,
 				title,
 				body,
 				starts_at: starts,
@@ -212,6 +224,7 @@ function parseSpecials(value: unknown): Special[] {
 			}
 		];
 	});
+	return { items, promoteNow };
 }
 
 function parseMenu(value: unknown): MenuCategory[] {

@@ -3,14 +3,13 @@ import { and, eq, exists } from 'drizzle-orm';
 import webpush from 'web-push';
 import { db } from '$lib/server/db';
 import { favourites, pushDeliveries, pushSubscriptions, venues } from '$lib/server/db/schema';
-import { dueEventNotices, type NoticeSource, type PlaceNotice } from '$lib/server/place-notices';
+import { dueEventNotices, promotionNowNotice, type NoticeSource, type PlaceNotice } from '$lib/server/place-notices';
+import { resolveVapid } from '$lib/server/runtime-env';
 
 let configured = false;
 
 function configure(): boolean {
-	const publicKey = env.VAPID_PUBLIC_KEY?.trim();
-	const privateKey = env.VAPID_PRIVATE_KEY?.trim();
-	const subject = env.VAPID_SUBJECT?.trim() || 'mailto:place@localhost';
+	const { publicKey, privateKey, subject } = resolveVapid(env);
 	if (!publicKey || !privateKey) return false;
 	if (!configured) {
 		webpush.setVapidDetails(subject, publicKey, privateKey);
@@ -87,6 +86,45 @@ export async function dispatchDueEvents(venueId?: string, at = new Date()): Prom
 				if (!claimed) continue;
 				await sendAll(devices, notice);
 			}
+		}
+	} catch (error) {
+		console.error('Place notification failed', error);
+	}
+}
+
+/** Notify savers immediately when an editor starts a promotion now. */
+export async function dispatchPromotionsNow(venueId: string, specialIds: string[]): Promise<void> {
+	if (!specialIds.length) return;
+	try {
+		if (!configure()) return;
+		const [venue] = await db
+			.select({
+				id: venues.id,
+				name: venues.name,
+				slug: venues.slug,
+				specials: venues.specials,
+				announcements: venues.announcements
+			})
+			.from(venues)
+			.where(eq(venues.id, venueId))
+			.limit(1);
+		if (!venue) return;
+		const wanted = new Set(specialIds);
+		const devices = await subscribers(venue.id);
+		if (!devices.length) return;
+		const source: NoticeSource = {
+			name: venue.name,
+			slug: venue.slug,
+			specials: venue.specials ?? [],
+			announcements: venue.announcements ?? []
+		};
+		for (const special of source.specials) {
+			if (!wanted.has(special.id)) continue;
+			const notice = promotionNowNotice(source, special);
+			const claimed = await claim(venue.id, notice);
+			if (!claimed) continue;
+			await sendAll(devices, notice);
+			await claim(venue.id, { ...notice, phase: 'starting', tag: `starting-${notice.eventKey}` });
 		}
 	} catch (error) {
 		console.error('Place notification failed', error);

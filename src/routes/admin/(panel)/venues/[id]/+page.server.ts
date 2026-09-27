@@ -4,7 +4,7 @@ import { isUniqueViolation, payloadFromForm } from '$lib/server/venue-input';
 import { filesFromForm, persistVenueImages, removeImagePaths } from '$lib/server/storage';
 import { canDeleteVenue, isSuperuser, requireVenueEditor } from '$lib/server/access';
 import { datetimeLocalToIso } from '$lib/venue';
-import { dispatchDueEvents } from '$lib/server/push';
+import { dispatchDueEvents, dispatchPromotionsNow } from '$lib/server/push';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, locals }) => {
@@ -39,6 +39,7 @@ export const actions: Actions = {
 			);
 			const venue = await updateVenue(params.id, { ...parsed.value, images });
 			if (!venue) error(404, 'Place not found.');
+			await dispatchPromotionsNow(venue.id, parsed.promoteNow);
 			await dispatchDueEvents(venue.id);
 			redirect(303, `/admin/venues/${params.id}?saved=1`);
 		} catch (cause) {

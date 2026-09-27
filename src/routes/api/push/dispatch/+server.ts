@@ -1,10 +1,11 @@
 import { env } from '$env/dynamic/private';
 import { dispatchDueEvents } from '$lib/server/push';
+import { resolveCronSecret } from '$lib/server/runtime-env';
 import type { RequestHandler } from './$types';
 
-/** Vercel Cron calls this so events notify when they are soon or starting, not only when someone saves. */
+/** Vercel no longer calls this. GitHub Actions hits it on a schedule, with the same bearer secret. */
 export const GET: RequestHandler = async ({ request }) => {
-	const secret = env.CRON_SECRET?.trim();
+	const secret = resolveCronSecret(env);
 	const header = request.headers.get('authorization');
 	if (!secret || header !== `Bearer ${secret}`) {
 		return new Response('Unauthorized', { status: 401 });

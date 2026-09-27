@@ -5,6 +5,7 @@
 	const path = $derived(page.url.pathname);
 	const email = $derived(page.data.user?.email);
 	const canCreate = $derived(page.data.canCreate);
+	const canManage = $derived(page.data.canManage);
 	const isSuperuser = $derived(page.data.isSuperuser);
 </script>
 
@@ -30,6 +31,16 @@
 					: 'border-transparent text-muted hover:text-ink'}"
 			>
 				New
+			</a>
+		{/if}
+		{#if canManage}
+			<a
+				href="/admin/alerts"
+				class="border-b pb-0.5 {path.startsWith('/admin/alerts')
+					? 'border-ink text-ink'
+					: 'border-transparent text-muted hover:text-ink'}"
+			>
+				Alerts
 			</a>
 		{/if}
 		{#if isSuperuser}

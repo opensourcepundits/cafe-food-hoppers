@@ -17,6 +17,17 @@ export function canCreateVenue(user: AuthUser | null): boolean {
 	return user.canCreate;
 }
 
+export function canManagePlaces(user: AuthUser | null): boolean {
+	if (!user) return false;
+	if (user.role === 'superuser' || user.role === 'place_manager' || user.role === 'franchise_manager') return true;
+	return user.canCreate || user.canEdit;
+}
+
+export function canPostAlert(user: AuthUser | null, venue: VenueAccess): boolean {
+	if (canEditVenue(user, venue)) return true;
+	return canCreateVenue(user) && venue.createdBy === user?.id;
+}
+
 export function canEditVenue(user: AuthUser | null, venue: VenueAccess): boolean {
 	if (!user) return false;
 	if (user.role === 'superuser') return true;

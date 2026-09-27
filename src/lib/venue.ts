@@ -481,6 +481,19 @@ export function datetimeLocalToIso(value: string): string | null {
 	return new Date(parsed).toISOString();
 }
 
+export type AlertTiming = 'upcoming' | 'ongoing' | 'done';
+
+export function alertTiming(announcement: Announcement, at = new Date()): AlertTiming {
+	const start = Date.parse(announcement.starts_at);
+	if (Number.isNaN(start)) return 'done';
+	const end = announcement.ends_at ? Date.parse(announcement.ends_at) : Number.NaN;
+	if (!Number.isNaN(end) && end < start) return 'done';
+	const now = at.getTime();
+	if (now < start) return 'upcoming';
+	if (Number.isNaN(end) || now <= end) return 'ongoing';
+	return 'done';
+}
+
 export function isAnnouncementActive(announcement: Announcement, at = new Date()): boolean {
 	const start = Date.parse(announcement.starts_at);
 	if (Number.isNaN(start) || at.getTime() < start) return false;

@@ -641,7 +641,27 @@ export function upcomingSpecials(specials: Special[], at = new Date()): Special[
 	return specials.filter((item) => specialTiming(item, at) === 'upcoming');
 }
 
-const SPECIAL_SOON_MS = 60 * 60 * 1000;
+/** How early a saved place can notify that an event is about to start. */
+export const EVENT_SOON_MS = 60 * 60 * 1000;
+
+/** How long after the start we still send the "starting" notice. */
+export const EVENT_START_GRACE_MS = 15 * 60 * 1000;
+
+export function eventPhase(
+	startsAt: string,
+	endsAt: string | null,
+	at = new Date()
+): 'soon' | 'starting' | null {
+	const start = Date.parse(startsAt);
+	if (Number.isNaN(start)) return null;
+	const now = at.getTime();
+	if (endsAt) {
+		const end = Date.parse(endsAt);
+		if (!Number.isNaN(end) && now > end) return null;
+	}
+	if (now < start) return start - now <= EVENT_SOON_MS ? 'soon' : null;
+	return now - start <= EVENT_START_GRACE_MS ? 'starting' : null;
+}
 
 export function specialPulse(ongoing: Special[], upcoming: Special[], at = new Date()): SpecialPulse | null {
 	const now = at.getTime();
@@ -652,7 +672,7 @@ export function specialPulse(ongoing: Special[], upcoming: Special[], at = new D
 		hasOngoing = true;
 		if (!special.ends_at) continue;
 		const end = Date.parse(special.ends_at);
-		if (!Number.isNaN(end) && end >= now && end - now <= SPECIAL_SOON_MS) ending = true;
+		if (!Number.isNaN(end) && end >= now && end - now <= EVENT_SOON_MS) ending = true;
 	}
 
 	if (ending) return 'ending';
@@ -660,7 +680,7 @@ export function specialPulse(ongoing: Special[], upcoming: Special[], at = new D
 
 	const startingSoon = upcoming.some((special) => {
 		const start = Date.parse(special.starts_at);
-		return !Number.isNaN(start) && start > now && start - now <= SPECIAL_SOON_MS;
+		return !Number.isNaN(start) && start > now && start - now <= EVENT_SOON_MS;
 	});
 	return startingSoon ? 'upcoming' : null;
 }

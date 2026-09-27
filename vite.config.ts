@@ -18,6 +18,9 @@ export default defineConfig({
 			adapter: adapter({
 				regions: ['fra1']
 			}),
+			serviceWorker: {
+				register: true
+			},
 
 			typescript: {
 				config: (config) => {

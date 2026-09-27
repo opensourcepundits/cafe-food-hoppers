@@ -13,6 +13,8 @@
 	import MapEmbed from '$lib/components/MapEmbed.svelte';
 	import ImageCarousel from '$lib/components/ImageCarousel.svelte';
 	import MenuList from '$lib/components/MenuList.svelte';
+	import PushToggle from '$lib/components/PushToggle.svelte';
+	import { page } from '$app/state';
 	import {
 		amenityLabels,
 		dayHoursLabel,
@@ -37,6 +39,7 @@
 
 	let { data, form } = $props();
 	const venue = $derived(data.venue);
+	const justSaved = $derived(page.url.searchParams.get('saved') === '1');
 
 	const maps = $derived(
 		venue.contact.google_maps ??
@@ -72,6 +75,14 @@
 						{data.favourite ? 'Saved' : 'Save'}
 					</button>
 				</form>
+				{#if data.favourite && justSaved}
+					<div class="mt-3 w-full basis-full border border-line px-4 py-3">
+						<p class="text-sm">Get a notification when an event here is about to start, or when a promotion starts now.</p>
+						<div class="mt-3">
+							<PushToggle vapidPublicKey={data.vapidPublicKey} />
+						</div>
+					</div>
+				{/if}
 			{:else}
 				<a
 					href="/login?next=/venues/{venue.slug}"

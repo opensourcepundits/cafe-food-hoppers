@@ -9,6 +9,7 @@ import {
 	primaryKey,
 	text,
 	timestamp,
+	uniqueIndex,
 	uuid,
 	type AnyPgColumn
 } from 'drizzle-orm/pg-core';
@@ -129,6 +130,39 @@ export const favourites = pgTable(
 	(table) => [
 		primaryKey({ columns: [table.userId, table.venueId] }),
 		index('idx_favourites_user').on(table.userId, table.createdAt)
+	]
+);
+
+export const pushSubscriptions = pgTable(
+	'push_subscriptions',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		endpoint: text('endpoint').notNull().unique(),
+		p256dh: text('p256dh').notNull(),
+		auth: text('auth').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [index('idx_push_subscriptions_user').on(table.userId)]
+);
+
+export const pushDeliveries = pgTable(
+	'push_deliveries',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		venueId: uuid('venue_id')
+			.notNull()
+			.references(() => venues.id, { onDelete: 'cascade' }),
+		eventKey: text('event_key').notNull(),
+		phase: text('phase').$type<'soon' | 'starting' | 'now'>().notNull(),
+		startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [
+		uniqueIndex('push_deliveries_once').on(table.venueId, table.eventKey, table.phase, table.startsAt),
+		index('idx_push_deliveries_venue').on(table.venueId)
 	]
 );
 

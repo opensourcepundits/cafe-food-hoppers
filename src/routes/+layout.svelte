@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import { dropThisDevice } from '$lib/push-client';
 
 	let { children, data } = $props();
 
@@ -14,10 +16,33 @@
 			? '/admin'
 			: '/profile'
 	);
+
+	onMount(() => {
+		const onSubmit = (event: Event) => {
+			const form = event.target;
+			if (!(form instanceof HTMLFormElement)) return;
+			const action = form.getAttribute('action') ?? '';
+			if (!action.includes('logout') || form.dataset.pushDropped === '1') return;
+			event.preventDefault();
+			void dropThisDevice().finally(() => {
+				form.dataset.pushDropped = '1';
+				form.requestSubmit();
+			});
+		};
+		document.addEventListener('submit', onSubmit);
+		return () => document.removeEventListener('submit', onSubmit);
+	});
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
+	<link rel="manifest" href="/manifest.webmanifest" />
+	<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+	<meta name="theme-color" content="#f4f1ea" />
+	<meta name="mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+	<meta name="apple-mobile-web-app-title" content="Place" />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link

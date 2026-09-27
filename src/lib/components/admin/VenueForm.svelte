@@ -42,7 +42,13 @@
 		amounts: Record<string, string>;
 	};
 	type DraftCategory = { key: string; category: string; columns: DraftColumn[]; items: DraftItem[] };
-	type DraftSpecial = Special & { key: string; startsLocal: string; endsLocal: string };
+	type DraftSpecial = Special & {
+		key: string;
+		startsLocal: string;
+		endsLocal: string;
+		promoteNow: boolean;
+		stampedStart?: string;
+	};
 	type DraftAnnouncement = Announcement & { key: string; startsLocal: string; endsLocal: string };
 
 	let {
@@ -219,7 +225,8 @@
 				title: item.title,
 				body: item.body,
 				starts_at: datetimeLocalToIso(item.startsLocal) ?? item.starts_at,
-				ends_at: datetimeLocalToIso(item.endsLocal)
+				ends_at: datetimeLocalToIso(item.endsLocal),
+				...(item.promoteNow ? { promote_now: true } : {})
 			})),
 			announcements: announcements.map((item) => ({
 				id: item.id,
@@ -264,7 +271,8 @@
 			...item,
 			key: nid(),
 			startsLocal: isoToDatetimeLocal(item.starts_at),
-			endsLocal: isoToDatetimeLocal(item.ends_at)
+			endsLocal: isoToDatetimeLocal(item.ends_at),
+			promoteNow: false
 		}));
 	}
 
@@ -429,9 +437,17 @@
 				starts_at: '',
 				ends_at: null,
 				startsLocal: '',
-				endsLocal: ''
+				endsLocal: '',
+				promoteNow: false
 			}
 		];
+	}
+
+	function startSpecialNow(key: string) {
+		const startsLocal = isoToDatetimeLocal(new Date().toISOString());
+		specials = specials.map((item) =>
+			item.key === key ? { ...item, startsLocal, promoteNow: true, stampedStart: startsLocal } : item
+		);
 	}
 
 	function addAnnouncement() {
@@ -1019,17 +1035,40 @@
 							<textarea class="{field} min-h-20" placeholder="Details" bind:value={special.body}></textarea>
 							<div class="grid gap-3 sm:grid-cols-2">
 								<Field label="Starts">
-									<input class={field} type="datetime-local" bind:value={special.startsLocal} />
+									<input
+										class={field}
+										type="datetime-local"
+										bind:value={special.startsLocal}
+										oninput={() => {
+											if (special.promoteNow && special.startsLocal !== special.stampedStart) {
+												special.promoteNow = false;
+											}
+										}}
+									/>
 								</Field>
 								<Field label="Ends">
 									<input class={field} type="datetime-local" bind:value={special.endsLocal} />
 								</Field>
 							</div>
-							<button
-								type="button"
-								class="{btnGhost} w-fit"
-								onclick={() => (specials = specials.filter((item) => item.key !== special.key))}>Remove</button
-							>
+							<div class="flex flex-wrap items-center gap-3">
+								<button
+									type="button"
+									class="{btnGhost} w-fit"
+									onclick={() => startSpecialNow(special.key)}
+								>
+									{special.promoteNow ? 'Starts now' : 'Start now'}
+								</button>
+								<button
+									type="button"
+									class="{btnGhost} w-fit"
+									onclick={() => (specials = specials.filter((item) => item.key !== special.key))}>Remove</button
+								>
+							</div>
+							{#if special.promoteNow}
+								<p class="text-sm text-muted">
+									Saving the place tells people who saved it that this promotion is on now.
+								</p>
+							{/if}
 						</div>
 					</details>
 				</li>

@@ -26,8 +26,8 @@ export const actions: Actions = {
 		if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(next)}`);
 		const venue = await getVenueBySlug(params.slug);
 		if (!venue) error(404, 'That venue is not in the index.');
-		await toggleFavourite(locals.user.id, venue.id);
-		redirect(303, next);
+		const saved = await toggleFavourite(locals.user.id, venue.id);
+		redirect(303, saved ? `${next}?saved=1` : next);
 	},
 	comment: async ({ request, locals, params }) => {
 		const next = `/venues/${params.slug}#comments`;

@@ -95,6 +95,29 @@ CREATE TABLE comments (
 );
 
 CREATE INDEX idx_comments_venue ON comments (venue_id, created_at DESC);
+
+CREATE TABLE push_subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_push_subscriptions_user ON push_subscriptions (user_id);
+
+CREATE TABLE push_deliveries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    venue_id UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+    event_key TEXT NOT NULL,
+    phase TEXT NOT NULL,
+    starts_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (venue_id, event_key, phase, starts_at)
+);
+
+CREATE INDEX idx_push_deliveries_venue ON push_deliveries (venue_id);
 CREATE INDEX idx_users_emails ON users USING gin (emails);
 CREATE INDEX idx_venues_created_by ON venues (created_by);
 

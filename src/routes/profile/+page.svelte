@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PushToggle from '$lib/components/PushToggle.svelte';
 	import { formatMauritiusWhen } from '$lib/venue';
 
 	let { data, form } = $props();
@@ -60,6 +61,16 @@
 		<button type="submit" class="border border-ink bg-ink px-4 py-2 text-sm text-paper">Save password</button>
 	</form>
 {/if}
+
+<section class="mb-10">
+	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Notifications</h3>
+	<p class="mt-3 max-w-lg text-sm leading-6 text-muted">
+		This device is notified when a saved place has an event starting within the hour, and again as it starts.
+	</p>
+	<div class="mt-3">
+		<PushToggle vapidPublicKey={data.vapidPublicKey} />
+	</div>
+</section>
 
 <section class="mb-10">
 	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">

@@ -1,6 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { canManagePlaces, canPostAlert } from '$lib/server/access';
-import { dispatchDueEvents } from '$lib/server/push';
+import { dispatchPostedAnnouncement } from '$lib/server/push';
 import { getVenueById, listVenuesAdmin, setVenueAnnouncements } from '$lib/server/venues';
 import {
 	alertTiming,
@@ -32,6 +32,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		ongoing: alerts.filter((alert) => alert.status === 'ongoing').sort(byStart),
 		done: alerts.filter((alert) => alert.status === 'done').sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at)),
 		created: url.searchParams.get('created') === '1',
+		notice: url.searchParams.get('notice'),
 		cancelled: url.searchParams.get('cancelled') === '1'
 	};
 };
@@ -62,8 +63,8 @@ export const actions: Actions = {
 		};
 		const saved = await setVenueAnnouncements(venue.id, [...venue.announcements, alert]);
 		if (!saved) error(404, 'Place not found.');
-		if (alert.type === 'event') await dispatchDueEvents(venue.id);
-		redirect(303, '/admin/alerts?created=1');
+		const notice = await dispatchPostedAnnouncement(saved.id, alert, locals.user.id);
+		redirect(303, `/admin/alerts?created=1&notice=${notice}`);
 	},
 	cancel: async ({ request, locals }) => {
 		if (!locals.user) redirect(303, '/login?next=/admin/alerts');

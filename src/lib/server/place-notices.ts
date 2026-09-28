@@ -1,4 +1,4 @@
-import { eventPhase, type Announcement, type Special } from '$lib/venue';
+import { alertTiming, eventPhase, type Announcement, type Special } from '$lib/venue';
 
 export type PlaceNotice = {
 	title: string;
@@ -23,8 +23,8 @@ export function dueEventNotices(source: NoticeSource, at = new Date()): PlaceNot
 	const events = [
 		...source.specials.map((item) => ({ key: `special:${item.id}`, item })),
 		...source.announcements
-			.filter((item) => item.type === 'event')
-			.map((item) => ({ key: `event:${item.id}`, item }))
+			.filter((item) => item.type === 'event' || item.type === 'alert')
+			.map((item) => ({ key: `${item.type}:${item.id}`, item }))
 	];
 
 	const notices: PlaceNotice[] = [];
@@ -46,6 +46,41 @@ export function dueEventNotices(source: NoticeSource, at = new Date()): PlaceNot
 		});
 	}
 	return notices;
+}
+
+export type PostedDelivery = 'now' | 'later' | 'never';
+
+/** What to send for an announcement that was just posted. */
+export function postedNotices(
+	source: NoticeSource,
+	alert: Announcement,
+	at = new Date()
+): { when: PostedDelivery; notices: PlaceNotice[] } {
+	const phase = eventPhase(alert.starts_at, alert.ends_at, at);
+	const live = phase !== null || alertTiming(alert, at) === 'ongoing';
+	if (!live) {
+		const later = alert.type === 'event' || alert.type === 'alert';
+		return { when: later ? 'later' : 'never', notices: [] };
+	}
+	if ((alert.type === 'event' || alert.type === 'alert') && phase) {
+		const key = `${alert.type}:${alert.id}`;
+		const notices = dueEventNotices(source, at).filter((notice) => notice.eventKey === key);
+		if (notices.length) return { when: 'now', notices };
+	}
+	return { when: 'now', notices: [postedNotice(source, alert)] };
+}
+
+function postedNotice(source: NoticeSource, alert: Announcement): PlaceNotice {
+	const key = `${alert.type}:${alert.id}`;
+	return {
+		title: clip(`${source.name}: ${alert.title}`, 80),
+		body: clip(alert.body || alert.title),
+		url: `/venues/${source.slug}`,
+		tag: `posted-${key}`,
+		eventKey: key,
+		phase: 'now',
+		startsAt: new Date(alert.starts_at).toISOString()
+	};
 }
 
 /** A promotion an editor started on the spot, rather than a scheduled start. */

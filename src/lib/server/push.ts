@@ -2,9 +2,10 @@ import { env } from '$env/dynamic/private';
 import { and, eq, exists } from 'drizzle-orm';
 import webpush from 'web-push';
 import { db } from '$lib/server/db';
-import { favourites, pushDeliveries, pushSubscriptions, venues } from '$lib/server/db/schema';
+import { favourites, pushDeliveries, pushSubscriptions, users, venues } from '$lib/server/db/schema';
 import { dueEventNotices, promotionNowNotice, type NoticeSource, type PlaceNotice } from '$lib/server/place-notices';
 import { resolveVapid } from '$lib/server/runtime-env';
+import { noteMissingWhatsApp, sendWhatsAppNotices, toWhatsAppRecipient, whatsAppReady } from '$lib/server/whatsapp';
 
 let configured = false;
 
@@ -49,7 +50,8 @@ export async function deletePushSubscription(userId: string, endpoint: string): 
 /** Notify people who saved a place when one of its events is soon or starting. */
 export async function dispatchDueEvents(venueId?: string, at = new Date()): Promise<void> {
 	try {
-		if (!configure()) return;
+		const pushReady = configure();
+		const waReady = whatsAppReady();
 		const rows = await db
 			.select({
 				id: venues.id,
@@ -79,12 +81,16 @@ export async function dispatchDueEvents(venueId?: string, at = new Date()): Prom
 			};
 			const notices = dueEventNotices(source, at);
 			if (!notices.length) continue;
-			const devices = await subscribers(venue.id);
-			if (!devices.length) continue;
+			const devices = pushReady ? await subscribers(venue.id) : [];
+			const phones = await loadWhatsAppRecipients(venue.id);
+			if (phones.length && !waReady) noteMissingWhatsApp();
+			const waTargets = waReady ? phones : [];
+			if (!devices.length && !waTargets.length) continue;
 			for (const notice of notices) {
 				const claimed = await claim(venue.id, notice);
 				if (!claimed) continue;
-				await sendAll(devices, notice);
+				if (devices.length) await sendAll(devices, notice);
+				if (waTargets.length) await sendWhatsAppNotices(waTargets, notice);
 			}
 		}
 	} catch (error) {
@@ -96,7 +102,8 @@ export async function dispatchDueEvents(venueId?: string, at = new Date()): Prom
 export async function dispatchPromotionsNow(venueId: string, specialIds: string[]): Promise<void> {
 	if (!specialIds.length) return;
 	try {
-		if (!configure()) return;
+		const pushReady = configure();
+		const waReady = whatsAppReady();
 		const [venue] = await db
 			.select({
 				id: venues.id,
@@ -110,8 +117,11 @@ export async function dispatchPromotionsNow(venueId: string, specialIds: string[
 			.limit(1);
 		if (!venue) return;
 		const wanted = new Set(specialIds);
-		const devices = await subscribers(venue.id);
-		if (!devices.length) return;
+		const devices = pushReady ? await subscribers(venue.id) : [];
+		const phones = await loadWhatsAppRecipients(venue.id);
+		if (phones.length && !waReady) noteMissingWhatsApp();
+		const waTargets = waReady ? phones : [];
+		if (!devices.length && !waTargets.length) return;
 		const source: NoticeSource = {
 			name: venue.name,
 			slug: venue.slug,
@@ -123,12 +133,41 @@ export async function dispatchPromotionsNow(venueId: string, specialIds: string[
 			const notice = promotionNowNotice(source, special);
 			const claimed = await claim(venue.id, notice);
 			if (!claimed) continue;
-			await sendAll(devices, notice);
+			if (devices.length) await sendAll(devices, notice);
+			if (waTargets.length) await sendWhatsAppNotices(waTargets, notice);
 			await claim(venue.id, { ...notice, phase: 'starting', tag: `starting-${notice.eventKey}` });
 		}
 	} catch (error) {
 		console.error('Place notification failed', error);
 	}
+}
+
+async function loadWhatsAppRecipients(venueId: string): Promise<string[]> {
+	try {
+		return await whatsAppRecipients(venueId);
+	} catch (error) {
+		console.error('WhatsApp recipients failed', error);
+		return [];
+	}
+}
+
+async function whatsAppRecipients(venueId: string): Promise<string[]> {
+	const rows = await db
+		.select({ phone: users.phone })
+		.from(users)
+		.innerJoin(favourites, eq(favourites.userId, users.id))
+		.where(and(eq(favourites.venueId, venueId), eq(users.whatsappOptIn, true)));
+	const numbers: string[] = [];
+	for (const row of rows) {
+		if (!row.phone) continue;
+		const to = toWhatsAppRecipient(row.phone);
+		if (!to) {
+			console.error('WhatsApp skipped, phone is not a Mauritius number', row.phone);
+			continue;
+		}
+		numbers.push(to);
+	}
+	return numbers;
 }
 
 async function subscribers(venueId: string) {

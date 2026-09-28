@@ -42,6 +42,36 @@ sw.addEventListener('notificationclick', (event) => {
 	event.waitUntil(openPlace(target));
 });
 
+type SubscriptionChangeEvent = ExtendableEvent & {
+	oldSubscription?: PushSubscription | null;
+	newSubscription?: PushSubscription | null;
+};
+
+sw.addEventListener('pushsubscriptionchange', (event) => {
+	const change = event as SubscriptionChangeEvent;
+	change.waitUntil(resubscribe(change.oldSubscription ?? null, change.newSubscription ?? null));
+});
+
+async function resubscribe(previous: PushSubscription | null, next: PushSubscription | null): Promise<void> {
+	const key = previous?.options.applicationServerKey;
+	const subscription =
+		next ?? (key ? await sw.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }) : null);
+	if (!subscription) return;
+	const saved = await fetch('/api/push', {
+		method: 'POST',
+		credentials: 'same-origin',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(subscription.toJSON())
+	});
+	if (!saved.ok || !previous || previous.endpoint === subscription.endpoint) return;
+	await fetch('/api/push', {
+		method: 'DELETE',
+		credentials: 'same-origin',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ endpoint: previous.endpoint })
+	});
+}
+
 function readPayload(event: PushEvent): PushPayload {
 	try {
 		const parsed = event.data?.json();

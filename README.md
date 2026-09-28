@@ -150,7 +150,37 @@ Local Postgres is on **port 5433** so it does not collide with 5432.
 
 Copy [`.env.example`](.env.example). Never commit `.env`.
 
-Vercel may also inject `CAFE_DB_*` Postgres URLs; the app reads those as fallbacks.
+Vercel may also inject `CAFE_DB_*` Postgres URLs; the app reads those as fallbacks. WhatsApp variables use the same `CAFE_DB_` fallback.
+
+### WhatsApp alerts
+
+Web Push stays. The same three notices (starts soon, is starting, promotion on now) can also go out on WhatsApp to people who favourited the venue and opted in on `/profile`. A favourite by itself is not consent. The account phone is stored as digits; an 8-digit Mauritius number is sent as `230` plus those digits.
+
+Meta must be set up before a send succeeds:
+
+1. Create a [Meta Business Portfolio](https://business.facebook.com) and a developer app with the WhatsApp product.
+2. Add a WhatsApp Business phone number that is not active on the consumer WhatsApp app. In development, only numbers added as test recipients receive messages. Going live needs a display name. Higher volume needs business verification.
+3. Create a permanent system-user token and copy the **Phone number ID**. The 24-hour token from Getting Started expires.
+4. Submit two templates and wait until Meta approves them. Business-initiated alerts cannot be free-form text.
+   - Utility `place_event` for “starts soon” and “is starting”.
+   - Marketing `place_promo` for “is on now”. Promo copy in a utility template is usually rejected.
+   - Body: `{{1}}` title line, `{{2}}` short detail. No newlines inside a variable, and no more than four spaces in a row.
+   - URL button `https://place.dot42.dev/{{1}}`. The button variable is the path `venues/{slug}`, separate from the body variables.
+5. Set the webhook to `https://place.dot42.dev/api/whatsapp`. Meta sends a verify challenge. A reply of STOP or unsubscribe turns WhatsApp off for that phone. Delivery failures are logged; the phone stays on the account.
+6. Turn on billing. Meta charges per delivered template. Marketing costs more than utility.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `WHATSAPP_TOKEN` | For sends | Permanent system-user token |
+| `WHATSAPP_PHONE_NUMBER_ID` | For sends | Cloud API phone number ID |
+| `WHATSAPP_EVENT_TEMPLATE` | Optional | Defaults to `place_event` |
+| `WHATSAPP_PROMO_TEMPLATE` | Optional | Defaults to `place_promo` |
+| `WHATSAPP_TEMPLATE_LANG` | Optional | Defaults to `en` |
+| `PUBLIC_SITE_ORIGIN` | Optional | Button domain. Defaults to `https://place.dot42.dev` |
+| `WHATSAPP_VERIFY_TOKEN` | For webhook | String you choose; Meta sends it back on verify |
+| `WHATSAPP_APP_SECRET` | For webhook | App secret used to check `X-Hub-Signature-256` |
+
+Apply [`drizzle/0010_whatsapp.sql`](drizzle/0010_whatsapp.sql) so `users.whatsapp_opt_in` exists, or push the Drizzle schema. If the token or phone number ID is missing, WhatsApp is skipped and Web Push still runs.
 
 ## Database
 

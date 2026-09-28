@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import AddToHomeScreen from '$lib/components/AddToHomeScreen.svelte';
+	import { iosNeedsHomeScreen } from '$lib/ios-install';
 	import { currentPushSubscription, dropThisDevice, enablePush, pushSupported } from '$lib/push-client';
 
 	let { vapidPublicKey }: { vapidPublicKey: string } = $props();
@@ -11,11 +13,7 @@
 		'border border-ink bg-paper px-3 py-1.5 text-sm hover:bg-ink hover:text-paper disabled:opacity-50';
 
 	onMount(() => {
-		const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-		const standalone =
-			window.matchMedia('(display-mode: standalone)').matches ||
-			('standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
-		iosInstall = ios && !standalone;
+		iosInstall = iosNeedsHomeScreen();
 		if (!pushSupported()) {
 			status = 'unsupported';
 			return;
@@ -42,7 +40,7 @@
 </script>
 
 {#if iosInstall}
-	<p class="text-xs leading-5 text-muted">On iPhone, add Place to your Home Screen before notifications can arrive.</p>
+	<AddToHomeScreen variant="inline" />
 {:else if status === 'unsupported'}
 	<p class="text-sm text-muted">This browser cannot receive notifications.</p>
 {:else if status === 'missing'}

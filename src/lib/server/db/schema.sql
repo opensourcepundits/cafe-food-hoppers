@@ -57,17 +57,26 @@ CREATE TABLE users (
     phone TEXT UNIQUE,
     password_hash TEXT NOT NULL,
     first_name TEXT,
-    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'editor', 'manager', 'superuser')),
+    role TEXT NOT NULL DEFAULT 'user' CONSTRAINT users_role_check CHECK (role IN ('user', 'place_manager', 'franchise_manager', 'superuser')),
     can_create BOOLEAN NOT NULL DEFAULT FALSE,
     can_edit BOOLEAN NOT NULL DEFAULT FALSE,
     venue_id UUID REFERENCES venues(id) ON DELETE SET NULL,
+    franchise_id UUID,
     emails TEXT[] NOT NULL DEFAULT '{}',
-    whatsapp_opt_in BOOLEAN NOT NULL DEFAULT FALSE,
-    whatsapp_opted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT users_editor_venue CHECK (role <> 'editor' OR venue_id IS NOT NULL)
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE franchises (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE venues ADD COLUMN franchise_id UUID REFERENCES franchises(id) ON DELETE SET NULL;
+ALTER TABLE users
+    ADD CONSTRAINT users_franchise_id_fkey
+    FOREIGN KEY (franchise_id) REFERENCES franchises(id) ON DELETE SET NULL;
 
 CREATE TABLE sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

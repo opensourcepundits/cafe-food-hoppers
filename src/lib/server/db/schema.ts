@@ -90,8 +90,6 @@ export const users = pgTable(
 		venueId: uuid('venue_id').references(() => venues.id, { onDelete: 'set null' }),
 		franchiseId: uuid('franchise_id'),
 		emails: text('emails').array().notNull().default(sql`'{}'::text[]`),
-		whatsappOptIn: boolean('whatsapp_opt_in').notNull().default(false),
-		whatsappOptedAt: timestamp('whatsapp_opted_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},

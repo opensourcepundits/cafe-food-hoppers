@@ -19,7 +19,11 @@ export function resolveVapid(env: Record<string, string | undefined> = process.e
 	return {
 		publicKey: pair?.publicKey,
 		privateKey: pair?.privateKey,
-		subject: pair?.subject ?? readServerEnv(env, 'VAPID_SUBJECT') ?? 'mailto:place@localhost'
+		subject:
+			usableSubject(pair?.subject) ??
+			usableSubject(readServerEnv(env, 'VAPID_SUBJECT')) ??
+			usableSubject(readServerEnv(env, 'PUBLIC_SITE_ORIGIN')) ??
+			'https://place.dot42.dev'
 	};
 }
 
@@ -27,28 +31,6 @@ export function resolveCronSecret(
 	env: Record<string, string | undefined> = process.env
 ): string | undefined {
 	return readServerEnv(env, 'CRON_SECRET');
-}
-
-export function resolveWhatsApp(env: Record<string, string | undefined> = process.env): {
-	token: string | undefined;
-	phoneNumberId: string | undefined;
-	eventTemplate: string;
-	promoTemplate: string;
-	templateLang: string;
-	siteOrigin: string;
-	verifyToken: string | undefined;
-	appSecret: string | undefined;
-} {
-	return {
-		token: readServerEnv(env, 'WHATSAPP_TOKEN'),
-		phoneNumberId: readServerEnv(env, 'WHATSAPP_PHONE_NUMBER_ID'),
-		eventTemplate: readServerEnv(env, 'WHATSAPP_EVENT_TEMPLATE') ?? 'place_event',
-		promoTemplate: readServerEnv(env, 'WHATSAPP_PROMO_TEMPLATE') ?? 'place_promo',
-		templateLang: readServerEnv(env, 'WHATSAPP_TEMPLATE_LANG') ?? 'en',
-		siteOrigin: readServerEnv(env, 'PUBLIC_SITE_ORIGIN') ?? 'https://place.dot42.dev',
-		verifyToken: readServerEnv(env, 'WHATSAPP_VERIFY_TOKEN'),
-		appSecret: readServerEnv(env, 'WHATSAPP_APP_SECRET')
-	};
 }
 
 function first(value: string | undefined): string | undefined {
@@ -65,6 +47,25 @@ function vapidPair(
 	const privateKey = first(env[`${prefix}VAPID_PRIVATE_KEY`]);
 	if (!publicKey || !privateKey || !isVapidPublicKey(publicKey)) return undefined;
 	return { publicKey, privateKey, subject: first(env[`${prefix}VAPID_SUBJECT`]) };
+}
+
+/** Apple's push service rejects a localhost subject with BadJwtToken, so the send fails after the alert is saved. */
+function usableSubject(value: string | undefined): string | undefined {
+	const trimmed = first(value);
+	if (!trimmed) return undefined;
+	try {
+		const url = new URL(trimmed);
+		if (url.protocol === 'mailto:') {
+			const domain = url.pathname.split('@')[1]?.toLowerCase() ?? '';
+			if (!domain || domain === 'localhost' || domain.endsWith('.localhost')) return undefined;
+			return trimmed;
+		}
+		if (url.protocol !== 'https:') return undefined;
+		if (url.hostname === 'localhost' || url.hostname.endsWith('.localhost')) return undefined;
+		return trimmed;
+	} catch {
+		return undefined;
+	}
 }
 
 function isVapidPublicKey(value: string): boolean {

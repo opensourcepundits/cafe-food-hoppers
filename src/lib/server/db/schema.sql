@@ -62,6 +62,8 @@ CREATE TABLE users (
     can_edit BOOLEAN NOT NULL DEFAULT FALSE,
     venue_id UUID REFERENCES venues(id) ON DELETE SET NULL,
     emails TEXT[] NOT NULL DEFAULT '{}',
+    whatsapp_opt_in BOOLEAN NOT NULL DEFAULT FALSE,
+    whatsapp_opted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT users_editor_venue CHECK (role <> 'editor' OR venue_id IS NOT NULL)

@@ -28,6 +28,28 @@ export function resolveCronSecret(
 	return readServerEnv(env, 'CRON_SECRET');
 }
 
+export function resolveWhatsApp(env: Record<string, string | undefined> = process.env): {
+	token: string | undefined;
+	phoneNumberId: string | undefined;
+	eventTemplate: string;
+	promoTemplate: string;
+	templateLang: string;
+	siteOrigin: string;
+	verifyToken: string | undefined;
+	appSecret: string | undefined;
+} {
+	return {
+		token: readServerEnv(env, 'WHATSAPP_TOKEN'),
+		phoneNumberId: readServerEnv(env, 'WHATSAPP_PHONE_NUMBER_ID'),
+		eventTemplate: readServerEnv(env, 'WHATSAPP_EVENT_TEMPLATE') ?? 'place_event',
+		promoTemplate: readServerEnv(env, 'WHATSAPP_PROMO_TEMPLATE') ?? 'place_promo',
+		templateLang: readServerEnv(env, 'WHATSAPP_TEMPLATE_LANG') ?? 'en',
+		siteOrigin: readServerEnv(env, 'PUBLIC_SITE_ORIGIN') ?? 'https://place.dot42.dev',
+		verifyToken: readServerEnv(env, 'WHATSAPP_VERIFY_TOKEN'),
+		appSecret: readServerEnv(env, 'WHATSAPP_APP_SECRET')
+	};
+}
+
 function first(value: string | undefined): string | undefined {
 	const trimmed = value?.trim();
 	return trimmed ? trimmed : undefined;

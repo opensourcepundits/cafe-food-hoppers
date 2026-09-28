@@ -15,10 +15,11 @@ export function resolveVapid(env: Record<string, string | undefined> = process.e
 	privateKey: string | undefined;
 	subject: string;
 } {
+	const pair = vapidPair(env, '') ?? vapidPair(env, 'CAFE_DB_');
 	return {
-		publicKey: readServerEnv(env, 'VAPID_PUBLIC_KEY'),
-		privateKey: readServerEnv(env, 'VAPID_PRIVATE_KEY'),
-		subject: readServerEnv(env, 'VAPID_SUBJECT') ?? 'mailto:place@localhost'
+		publicKey: pair?.publicKey,
+		privateKey: pair?.privateKey,
+		subject: pair?.subject ?? readServerEnv(env, 'VAPID_SUBJECT') ?? 'mailto:place@localhost'
 	};
 }
 
@@ -53,4 +54,22 @@ export function resolveWhatsApp(env: Record<string, string | undefined> = proces
 function first(value: string | undefined): string | undefined {
 	const trimmed = value?.trim();
 	return trimmed ? trimmed : undefined;
+}
+
+/** A usable VAPID public key is a 65-byte uncompressed P-256 point. A placeholder name is not. */
+function vapidPair(
+	env: Record<string, string | undefined>,
+	prefix: string
+): { publicKey: string; privateKey: string; subject?: string } | undefined {
+	const publicKey = first(env[`${prefix}VAPID_PUBLIC_KEY`]);
+	const privateKey = first(env[`${prefix}VAPID_PRIVATE_KEY`]);
+	if (!publicKey || !privateKey || !isVapidPublicKey(publicKey)) return undefined;
+	return { publicKey, privateKey, subject: first(env[`${prefix}VAPID_SUBJECT`]) };
+}
+
+function isVapidPublicKey(value: string): boolean {
+	const padding = '='.repeat((4 - (value.length % 4)) % 4);
+	const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+	const bytes = Buffer.from(base64, 'base64');
+	return bytes.length === 65 && bytes[0] === 0x04;
 }

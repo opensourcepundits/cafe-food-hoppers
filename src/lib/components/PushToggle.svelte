@@ -27,7 +27,11 @@
 
 	async function enable() {
 		status = 'working';
-		status = await enablePush(vapidPublicKey);
+		try {
+			status = await enablePush(vapidPublicKey);
+		} catch {
+			status = 'error';
+		}
 	}
 
 	async function disable() {
@@ -39,9 +43,7 @@
 
 {#if iosInstall}
 	<p class="text-xs leading-5 text-muted">On iPhone, add Place to your Home Screen before notifications can arrive.</p>
-{/if}
-
-{#if status === 'unsupported'}
+{:else if status === 'unsupported'}
 	<p class="text-sm text-muted">This browser cannot receive notifications.</p>
 {:else if status === 'missing'}
 	<p class="text-sm text-muted">Notifications are not configured on this server yet.</p>

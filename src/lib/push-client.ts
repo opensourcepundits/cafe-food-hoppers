@@ -20,20 +20,62 @@ export async function currentPushSubscription(): Promise<PushSubscription | null
 
 export async function enablePush(vapidPublicKey: string): Promise<'on' | 'denied' | 'unsupported' | 'missing' | 'error'> {
 	if (!pushSupported()) return 'unsupported';
-	if (!vapidPublicKey) return 'missing';
-	const permission = await Notification.requestPermission();
-	if (permission !== 'granted') return 'denied';
-	const registration = (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.ready);
-	const subscription = await registration.pushManager.subscribe({
-		userVisibleOnly: true,
-		applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource
+	const applicationServerKey = vapidApplicationServerKey(vapidPublicKey);
+	if (!applicationServerKey) return 'missing';
+	try {
+		const permission = await Notification.requestPermission();
+		if (permission !== 'granted') return 'denied';
+		const registration = await notificationRegistration();
+		if (!registration) return 'error';
+		const subscription = await registration.pushManager.subscribe({
+			userVisibleOnly: true,
+			applicationServerKey: applicationServerKey as BufferSource
+		});
+		const response = await fetch('/api/push', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(subscription)
+		});
+		return response.ok ? 'on' : 'error';
+	} catch {
+		return 'error';
+	}
+}
+
+function vapidApplicationServerKey(value: string): Uint8Array | null {
+	try {
+		const key = urlBase64ToUint8Array(value);
+		if (key.length !== 65 || key[0] !== 4) return null;
+		return key;
+	} catch {
+		return null;
+	}
+}
+
+/** `serviceWorker.ready` never settles when no worker is active, which leaves the button on Enabling…. */
+async function notificationRegistration(): Promise<ServiceWorkerRegistration | null> {
+	const existing = await navigator.serviceWorker.getRegistration();
+	if (existing?.active) return existing;
+	const registration =
+		existing ??
+		(await navigator.serviceWorker.register('/service-worker.js').catch(() => null));
+	if (!registration) return null;
+	if (registration.active) return registration;
+	const worker = registration.installing ?? registration.waiting;
+	if (!worker) return null;
+	const active = await new Promise<boolean>((resolve) => {
+		const timer = setTimeout(() => resolve(false), 8000);
+		worker.addEventListener('statechange', () => {
+			if (registration.active) {
+				clearTimeout(timer);
+				resolve(true);
+			} else if (worker.state === 'redundant') {
+				clearTimeout(timer);
+				resolve(false);
+			}
+		});
 	});
-	const response = await fetch('/api/push', {
-		method: 'POST',
-		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify(subscription)
-	});
-	return response.ok ? 'on' : 'error';
+	return active ? registration : null;
 }
 
 export async function dropThisDevice(): Promise<void> {

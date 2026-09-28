@@ -3,7 +3,14 @@ import { and, eq, exists } from 'drizzle-orm';
 import webpush from 'web-push';
 import { db } from '$lib/server/db';
 import { favourites, pushDeliveries, pushSubscriptions, users, venues } from '$lib/server/db/schema';
-import { dueEventNotices, promotionNowNotice, type NoticeSource, type PlaceNotice } from '$lib/server/place-notices';
+import {
+	dueEventNotices,
+	postedNotices,
+	promotionNowNotice,
+	type NoticeSource,
+	type PlaceNotice
+} from '$lib/server/place-notices';
+import type { Announcement } from '$lib/venue';
 import { resolveVapid } from '$lib/server/runtime-env';
 import { noteMissingWhatsApp, sendWhatsAppNotices, toWhatsAppRecipient, whatsAppReady } from '$lib/server/whatsapp';
 
@@ -45,6 +52,60 @@ export async function deletePushSubscription(userId: string, endpoint: string): 
 	await db
 		.delete(pushSubscriptions)
 		.where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.endpoint, endpoint)));
+}
+
+/** Notify the author and people who saved the place about an announcement that was just posted. */
+export async function dispatchPostedAnnouncement(
+	venueId: string,
+	alert: Announcement,
+	authorId: string
+): Promise<'sent' | 'later' | 'none' | 'quiet' | 'failed'> {
+	try {
+		const pushReady = configure();
+		const [venue] = await db
+			.select({
+				id: venues.id,
+				name: venues.name,
+				slug: venues.slug,
+				specials: venues.specials,
+				announcements: venues.announcements
+			})
+			.from(venues)
+			.where(eq(venues.id, venueId))
+			.limit(1);
+		if (!venue) return 'none';
+		const source: NoticeSource = {
+			name: venue.name,
+			slug: venue.slug,
+			specials: venue.specials ?? [],
+			announcements: venue.announcements ?? []
+		};
+		const posted = postedNotices(source, alert);
+		if (posted.when !== 'now') return posted.when === 'later' ? 'later' : 'none';
+		const devices = await recipientDevices(venue.id, authorId);
+		const phones = await loadWhatsAppRecipients(venue.id);
+		if (phones.length && !whatsAppReady()) noteMissingWhatsApp();
+		const waTargets = whatsAppReady() ? phones : [];
+		if (!pushReady && devices.length) return 'failed';
+		const readyDevices = pushReady ? devices : [];
+		if (!readyDevices.length && !waTargets.length) return 'quiet';
+		let sent = false;
+		for (const notice of posted.notices) {
+			const claimed = await claim(venue.id, notice);
+			if (!claimed) continue;
+			const pushed = readyDevices.length ? await sendAll(readyDevices, notice) : 0;
+			if (waTargets.length) await sendWhatsAppNotices(waTargets, notice);
+			if (pushed || waTargets.length) {
+				sent = true;
+				continue;
+			}
+			await db.delete(pushDeliveries).where(eq(pushDeliveries.id, claimed));
+		}
+		return sent ? 'sent' : 'failed';
+	} catch (error) {
+		console.error('Place notification failed', error);
+		return 'failed';
+	}
 }
 
 /** Notify people who saved a place when one of its events is soon or starting. */
@@ -170,20 +231,31 @@ async function whatsAppRecipients(venueId: string): Promise<string[]> {
 	return numbers;
 }
 
+const deviceColumns = {
+	id: pushSubscriptions.id,
+	endpoint: pushSubscriptions.endpoint,
+	p256dh: pushSubscriptions.p256dh,
+	auth: pushSubscriptions.auth
+};
+
 async function subscribers(venueId: string) {
 	return db
-		.select({
-			id: pushSubscriptions.id,
-			endpoint: pushSubscriptions.endpoint,
-			p256dh: pushSubscriptions.p256dh,
-			auth: pushSubscriptions.auth
-		})
+		.select(deviceColumns)
 		.from(pushSubscriptions)
 		.innerJoin(favourites, eq(favourites.userId, pushSubscriptions.userId))
 		.where(eq(favourites.venueId, venueId));
 }
 
-async function claim(venueId: string, notice: PlaceNotice): Promise<boolean> {
+async function recipientDevices(venueId: string, authorId: string) {
+	const [saved, own] = await Promise.all([
+		subscribers(venueId),
+		db.select(deviceColumns).from(pushSubscriptions).where(eq(pushSubscriptions.userId, authorId))
+	]);
+	const seen = new Set(saved.map((device) => device.id));
+	return [...saved, ...own.filter((device) => !seen.has(device.id))];
+}
+
+async function claim(venueId: string, notice: PlaceNotice): Promise<string | null> {
 	const inserted = await db
 		.insert(pushDeliveries)
 		.values({
@@ -194,36 +266,39 @@ async function claim(venueId: string, notice: PlaceNotice): Promise<boolean> {
 		})
 		.onConflictDoNothing()
 		.returning({ id: pushDeliveries.id });
-	return inserted.length > 0;
+	return inserted[0]?.id ?? null;
 }
 
 async function sendAll(
 	devices: { id: string; endpoint: string; p256dh: string; auth: string }[],
 	notice: PlaceNotice
-): Promise<void> {
+): Promise<number> {
 	const payload = JSON.stringify({
 		title: notice.title,
 		body: notice.body,
 		url: notice.url,
 		tag: notice.tag
 	});
-	await Promise.all(
+	const results = await Promise.all(
 		devices.map(async (device) => {
 			try {
 				await webpush.sendNotification(
 					{ endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
 					payload
 				);
+				return true;
 			} catch (error) {
 				const status = statusCode(error);
 				if (status === 404 || status === 410) {
 					await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, device.id));
-					return;
+					return false;
 				}
 				console.error('Push send failed', status || error);
+				return false;
 			}
 		})
 	);
+	return results.filter(Boolean).length;
 }
 
 function statusCode(error: unknown): number {

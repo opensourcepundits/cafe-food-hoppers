@@ -22,7 +22,19 @@
 		<p class="mt-3 text-sm text-accent">{form.error}</p>
 	{/if}
 	{#if data.created}
-		<p class="mt-3 text-sm">Alert saved.</p>
+		<p class="mt-3 text-sm">
+			{#if data.notice === 'sent'}
+				Alert saved. A notification was sent to your devices and to anyone who saved this place.
+			{:else if data.notice === 'later'}
+				Alert saved. People who saved this place are notified in the hour before it starts.
+			{:else if data.notice === 'quiet'}
+				Alert saved. This account has no device with notifications on, and nobody who saved the place does either.
+			{:else if data.notice === 'failed'}
+				Alert saved, but the notification could not be sent.
+			{:else}
+				Alert saved. This one does not send a notification. Set the start to now, or within the next hour, to send it.
+			{/if}
+		</p>
 	{/if}
 	{#if data.cancelled}
 		<p class="mt-3 text-sm">Alert cancelled.</p>
@@ -66,7 +78,9 @@
 					<input class={field} type="datetime-local" name="ends" />
 				</label>
 			</div>
-			<p class="text-sm text-muted">An event also notifies people who saved the place when it is about to start.</p>
+			<p class="text-sm text-muted">
+				If it is already running, or starts within the hour, your devices and anyone who saved the place are notified now. An event or alert further out is sent in the hour before it starts.
+			</p>
 			<button type="submit" class="w-fit border border-ink bg-ink px-4 py-2 text-sm text-paper">Create alert</button>
 		</form>
 	{/if}

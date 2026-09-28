@@ -39,37 +39,49 @@
 		});
 	}
 
+	function line(className: string, text: string): HTMLElement {
+		const node = document.createElement('p');
+		node.className = className;
+		node.textContent = text;
+		return node;
+	}
+
 	function popup(place: MapPlace): HTMLElement {
 		const card = document.createElement('div');
 		card.className = 'pin-card';
 
-		const link = document.createElement('a');
-		link.href = `/venues/${place.slug}`;
-		link.textContent = place.name;
-		link.className = 'pin-card-name';
+		const head = document.createElement('div');
+		head.className = 'pin-card-head';
+		const name = document.createElement('p');
+		name.className = 'pin-card-name';
+		name.textContent = place.name;
+		const status = document.createElement('span');
+		status.className = place.open ? 'pin-status pin-status-open' : 'pin-status';
+		status.textContent = place.open ? 'Open' : 'Closed';
+		head.append(name, status);
 
-		const hours = document.createElement('p');
-		hours.className = 'pin-card-line';
-		hours.textContent = `${place.open ? 'Open' : 'Closed'} · ${place.hours} · ${place.wifi ?? 'No WiFi'}`;
+		card.append(line('pin-card-kicker', place.district), head);
+		card.append(line('pin-card-meta', [place.hours, place.wifi ?? 'No WiFi'].join(' · ')));
 
-		card.append(link, hours);
-
-		if (place.noise) {
-			const noise = document.createElement('p');
-			noise.className = 'pin-card-line';
-			noise.textContent = place.noise;
-			card.append(noise);
+		const labels = [place.noise, place.lighting.join(' · '), place.parking].filter(
+			(label): label is string => Boolean(label)
+		);
+		if (labels.length) {
+			const list = document.createElement('ul');
+			list.className = 'pin-card-chips';
+			for (const label of labels) {
+				const item = document.createElement('li');
+				item.textContent = label;
+				list.append(item);
+			}
+			card.append(list);
 		}
 
-		const light = document.createElement('p');
-		light.className = 'pin-card-line';
-		light.textContent = place.lighting.length ? place.lighting.join(' · ') : 'Light not listed';
-
-		const parking = document.createElement('p');
-		parking.className = 'pin-card-line';
-		parking.textContent = place.parking || 'Parking not listed';
-
-		card.append(light, parking);
+		const more = document.createElement('a');
+		more.href = `/venues/${place.slug}`;
+		more.className = 'pin-card-more';
+		more.textContent = 'More info';
+		card.append(more);
 		return card;
 	}
 
@@ -96,7 +108,12 @@
 			const marker = leaflet
 				.marker([place.lat, place.lng], { icon, title: place.name, keyboard: true })
 				.addTo(map)
-				.bindPopup(popup(place), { minWidth: 160, maxWidth: 240, autoPan: false })
+				.bindPopup(popup(place), {
+					minWidth: 220,
+					maxWidth: 260,
+					autoPan: false,
+					className: 'pin-popup'
+				})
 				.on('click', () => {
 					center(place.id);
 					reportSelect?.(place);
@@ -196,14 +213,9 @@
 <div class="relative">
 	<div bind:this={root} class="h-[min(70vh,640px)] w-full border border-line bg-paper-2"></div>
 	{#if selected}
-		<div class="absolute bottom-3 left-3 z-20 max-w-xs border border-ink bg-paper px-3 py-2 shadow-[3px_3px_0_0_var(--color-ink)]">
+		<div class="absolute bottom-3 left-3 z-20 w-64 border border-ink bg-paper px-3.5 py-3 shadow-[4px_4px_0_0_var(--color-ink)]">
 			<div class="flex items-start justify-between gap-3">
-				<a
-					href="/venues/{selected.slug}"
-					class="min-w-0 truncate text-sm font-medium underline decoration-line underline-offset-2"
-				>
-					{selected.name}
-				</a>
+				<p class="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">{selected.district}</p>
 				<button
 					type="button"
 					class="shrink-0 text-sm leading-none text-muted"
@@ -213,21 +225,30 @@
 					×
 				</button>
 			</div>
-			<p class="mt-1 text-xs text-muted">
-				{selected.closes ? `Closes ${selected.closes}` : 'Closed today'}
-				· {selected.wifi ?? 'No WiFi'}
+			<div class="mt-1 flex items-start justify-between gap-2">
+				<p class="min-w-0 text-sm font-semibold leading-5">{selected.name}</p>
+				<span
+					class="shrink-0 border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] {selected.open
+						? 'border-open text-open'
+						: 'border-line text-muted'}"
+				>
+					{selected.open ? 'Open' : 'Closed'}
+				</span>
+			</div>
+			<p class="mt-1.5 text-xs leading-5 text-muted">
+				{selected.hours} · {selected.wifi ?? 'No WiFi'}
 			</p>
-			{#if selected.noise}
-				<ul class="mt-1.5 flex flex-wrap gap-1">
-					<li class="border border-line px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-						{selected.noise}
-					</li>
-				</ul>
-			{/if}
-			<p class="mt-1.5 text-xs text-muted">
-				{selected.lighting.length ? selected.lighting.join(' · ') : 'Light not listed'}
-			</p>
-			<p class="text-xs text-muted">{selected.parking || 'Parking not listed'}</p>
+			<ul class="mt-2 flex flex-wrap gap-1">
+				{#each [selected.noise, selected.lighting.join(' · '), selected.parking].filter(Boolean) as label (label)}
+					<li class="border border-line bg-paper-2 px-1.5 py-0.5 text-[11px] text-ink">{label}</li>
+				{/each}
+			</ul>
+			<a
+				href="/venues/{selected.slug}"
+				class="mt-3 inline-flex border border-ink px-2 py-1 text-xs"
+			>
+				More info
+			</a>
 		</div>
 	{/if}
 </div>
@@ -304,36 +325,104 @@
 		animation-delay: 0.28s;
 	}
 
-	:global(.pin-card-name) {
-		display: block;
-		font-size: 14px;
-		font-weight: 500;
-		color: var(--color-ink);
-		text-decoration: underline;
-		text-underline-offset: 2px;
+	:global(.pin-card-kicker) {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--color-muted);
 	}
 
-	:global(.pin-card-line) {
+	:global(.pin-card-head) {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 8px;
 		margin-top: 2px;
-		font-size: 12px;
-		line-height: 1.3;
-		color: var(--color-muted, #6b6458);
 	}
 
-	:global(.leaflet-popup-content-wrapper) {
-		border-radius: 0;
+	:global(.pin-card-name) {
+		font-size: 15px;
+		font-weight: 600;
+		line-height: 1.3;
+		color: var(--color-ink);
+	}
+
+	:global(.pin-status) {
+		flex: none;
+		border: 1px solid var(--color-line);
+		padding: 1px 6px;
+		font-family: var(--font-mono);
+		font-size: 10px;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--color-muted);
+	}
+
+	:global(.pin-status-open) {
+		border-color: var(--color-open);
+		color: var(--color-open);
+	}
+
+	:global(.pin-card-meta) {
+		margin-top: 6px;
+		font-size: 12px;
+		line-height: 1.45;
+		color: var(--color-muted);
+	}
+
+	:global(.pin-card-chips) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		margin-top: 8px;
+		padding: 0;
+		list-style: none;
+	}
+
+	:global(.pin-card-chips li) {
+		border: 1px solid var(--color-line);
+		background: var(--color-paper-2);
+		padding: 2px 6px;
+		font-size: 11px;
+		line-height: 1.3;
+		color: var(--color-ink);
+	}
+
+	:global(.pin-card-more) {
+		display: inline-flex;
+		margin-top: 10px;
+		border: 1px solid var(--color-ink);
+		padding: 4px 8px;
+		font-size: 12px;
+		color: var(--color-ink);
+		text-decoration: none;
+	}
+
+	:global(.pin-popup .leaflet-popup-content-wrapper) {
+		border-radius: 2px;
+		border: 1px solid var(--color-ink);
 		background: var(--color-paper);
 		color: var(--color-ink);
-		box-shadow: 3px 3px 0 0 var(--color-ink);
+		box-shadow: 4px 4px 0 0 var(--color-ink);
 	}
 
-	:global(.leaflet-popup-content) {
-		margin: 8px 10px;
+	:global(.pin-popup .leaflet-popup-content) {
+		margin: 12px 14px 14px;
 		font-family: var(--font-sans);
 	}
 
-	:global(.leaflet-popup-tip) {
+	:global(.pin-popup .leaflet-popup-tip) {
 		background: var(--color-paper);
+		box-shadow: none;
+	}
+
+	:global(.pin-popup .leaflet-popup-close-button) {
+		width: 22px;
+		height: 22px;
+		padding: 4px 0 0;
+		font-size: 16px;
+		color: var(--color-muted);
 	}
 
 	:global(.leaflet-control-attribution) {

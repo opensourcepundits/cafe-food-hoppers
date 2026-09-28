@@ -68,34 +68,11 @@
 <section class="mb-10">
 	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Notifications</h3>
 	<p class="mt-3 max-w-lg text-sm leading-6 text-muted">
-		This device is notified when a saved place has an event starting within the hour, again as it starts, and when a promotion is started now. The same alerts can also go to WhatsApp.
+		This device is notified when a saved place has an event starting within the hour, again as it starts, and when a promotion is started now.
 	</p>
 	<div class="mt-3">
 		<PushToggle vapidPublicKey={data.vapidPublicKey} />
 	</div>
-	{#if data.phone}
-		<form method="POST" action="?/whatsapp" class="mt-4 max-w-lg">
-			{#if form?.whatsappError}
-				<p class="mb-3 border border-accent px-3 py-2 text-sm text-accent">{form.whatsappError}</p>
-			{/if}
-			{#if form?.whatsappSaved}
-				<p class="mb-3 border border-open px-3 py-2 text-sm text-open">WhatsApp alerts updated.</p>
-			{/if}
-			<label class="flex items-start gap-2 text-sm leading-6">
-				<input type="checkbox" name="optIn" class="mt-1" checked={data.whatsappOptIn} />
-				<span>Also send these on WhatsApp to {data.phone}</span>
-			</label>
-			<button type="submit" class="mt-3 border border-ink bg-paper px-3 py-1.5 text-sm hover:bg-ink hover:text-paper">
-				Save
-			</button>
-		</form>
-	{:else}
-		<label class="mt-4 flex items-start gap-2 text-sm leading-6 text-muted">
-			<input type="checkbox" disabled />
-			<span>Also send these on WhatsApp</span>
-		</label>
-		<p class="mt-2 text-sm text-muted">This account has no phone number.</p>
-	{/if}
 </section>
 
 <section class="mb-10">

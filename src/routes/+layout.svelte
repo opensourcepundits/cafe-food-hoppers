@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import EmergencyMeeting from '$lib/components/EmergencyMeeting.svelte';
 	import { dropThisDevice } from '$lib/push-client';
 
 	let { children, data } = $props();
@@ -102,9 +103,10 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+	<main class="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6">
 		{@render children()}
 	</main>
+	<EmergencyMeeting />
 
 	<footer class="border-t border-line">
 		<div class="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-6 text-xs text-muted sm:flex-row sm:justify-between sm:px-6">

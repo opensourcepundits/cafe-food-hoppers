@@ -108,13 +108,13 @@
 
 {#snippet card(place: MapPlace)}
 	<li
-		class="flex items-baseline justify-between gap-3 border px-3 py-1.5 hover:border-ink hover:bg-paper-2 {selected?.id === place.id
+		class="relative border hover:border-ink hover:bg-paper-2 {selected?.id === place.id
 			? 'border-ink bg-paper-2'
 			: 'border-line'}"
 	>
 		<button
 			type="button"
-			class="min-w-0 text-left"
+			class="block w-full px-3 py-2 pr-24 text-left"
 			onclick={() => {
 				selected = null;
 				map?.focus(place.id);
@@ -126,8 +126,11 @@
 				{place.open ? 'Open' : 'Closed'} · {place.hours} · {place.wifi ?? 'No WiFi'}
 			</span>
 		</button>
-		<a href="/venues/{place.slug}" class="shrink-0 text-xs underline decoration-line underline-offset-4">
-			Open
+		<a
+			href="/venues/{place.slug}"
+			class="absolute top-1/2 right-3 -translate-y-1/2 text-xs underline decoration-line underline-offset-4"
+		>
+			More info
 		</a>
 	</li>
 {/snippet}

@@ -22,7 +22,7 @@
 	let hereMarker: Marker | undefined;
 	let hereCircle: Circle | undefined;
 	let locateError = $state('');
-	let expanded = $state(true);
+	let fullscreen = $state(false);
 	let reportView: ((frame: MapFrame) => void) | undefined;
 	let reportSelect: ((place: MapPlace | null) => void) | undefined;
 	let fittedKey = '';
@@ -199,28 +199,30 @@
 		map.setView(marker.getLatLng(), zoom, { animate: false });
 	}
 
-	async function redraw() {
-		await tick();
-		map?.invalidateSize();
+	function toggleMap() {
+		fullscreen = !fullscreen;
 	}
 
-	function toggleMap() {
-		expanded = !expanded;
-		void redraw();
-	}
+	$effect(() => {
+		const active = fullscreen;
+		void tick().then(() => map?.invalidateSize());
+		if (!active || typeof document === 'undefined') return;
+		const previous = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') fullscreen = false;
+		};
+		window.addEventListener('keydown', onKey);
+		return () => {
+			document.body.style.overflow = previous;
+			window.removeEventListener('keydown', onKey);
+		};
+	});
 
 	export function focus(id: string) {
 		const marker = markers.get(id);
 		if (!map || !marker) return;
 		map.closePopup();
-		if (!expanded) {
-			expanded = true;
-			void redraw().then(() => {
-				center(id);
-				marker.openPopup();
-			});
-			return;
-		}
 		center(id);
 		marker.openPopup();
 	}
@@ -292,28 +294,28 @@
 
 </script>
 
-<div class="relative">
+<div class="relative {fullscreen ? 'fixed inset-0 z-30 bg-paper' : ''}">
 	<div
 		bind:this={root}
-		class="w-full border border-line bg-paper-2 {expanded ? 'h-[min(70vh,640px)]' : 'h-36'}"
+		class="w-full bg-paper-2 {fullscreen ? 'h-full' : 'h-[min(70vh,640px)] border border-line'}"
 	></div>
-	<div class="absolute top-3 right-3 z-[500] flex gap-2">
-		<button
-			type="button"
-			class="border border-ink bg-paper px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)]"
-			aria-expanded={expanded}
-			onclick={toggleMap}
-		>
-			{expanded ? 'Minimise' : 'Maximise'}
-		</button>
-		<button
-			type="button"
-			class="border border-ink bg-paper px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)]"
-			onclick={goHere}
-		>
-			Your location
-		</button>
-	</div>
+	<button
+		type="button"
+		class="absolute top-3 right-3 z-30 border border-ink bg-paper px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)]"
+		onclick={goHere}
+	>
+		Your location
+	</button>
+	<button
+		type="button"
+		class="absolute right-3 z-30 border border-ink bg-paper px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)] {fullscreen
+			? 'bottom-[max(5rem,calc(env(safe-area-inset-bottom)+4.5rem))]'
+			: 'bottom-3'}"
+		aria-pressed={fullscreen}
+		onclick={toggleMap}
+	>
+		{fullscreen ? 'Regular' : 'Full screen'}
+	</button>
 	{#if locateError}
 		<p class="absolute top-14 right-3 z-[500] max-w-56 border border-accent bg-paper px-3 py-2 text-xs text-accent">
 			{locateError}
@@ -545,6 +547,10 @@
 		padding: 4px 0 0;
 		font-size: 16px;
 		color: var(--color-muted);
+	}
+
+	:global(.leaflet-bottom.leaflet-right) {
+		margin-bottom: 2.5rem;
 	}
 
 	:global(.leaflet-control-attribution) {

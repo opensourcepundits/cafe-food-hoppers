@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import AddToHomeScreen from '$lib/components/AddToHomeScreen.svelte';
 	import EmergencyMeeting from '$lib/components/EmergencyMeeting.svelte';
 	import { dropThisDevice } from '$lib/push-client';
 
@@ -102,6 +103,7 @@
 			</nav>
 		</div>
 	</header>
+	<AddToHomeScreen />
 
 	<main class="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6">
 		{@render children()}

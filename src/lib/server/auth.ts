@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { redirect, type Cookies } from '@sveltejs/kit';
 import { and, desc, eq, gt, inArray, or, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { sessions, userVenues, users, venues, type UserRow } from '$lib/server/db/schema';
+import { sessions, userVenues, users, venues } from '$lib/server/db/schema';
 import { hashPassword, verifyPassword } from '$lib/server/password';
 
 export const SESSION_COOKIE = 'place_session';
@@ -57,6 +57,35 @@ export function normalizePhone(value: string): string {
 export function isEmail(value: string): boolean {
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
+
+/** Only what sign-in needs, so a column added in code but not yet in the database cannot block login. */
+const authColumns = {
+	id: users.id,
+	email: users.email,
+	phone: users.phone,
+	passwordHash: users.passwordHash,
+	role: users.role,
+	canCreate: users.canCreate,
+	canEdit: users.canEdit,
+	firstName: users.firstName,
+	venueId: users.venueId,
+	franchiseId: users.franchiseId,
+	emails: users.emails
+};
+
+type AuthRow = {
+	id: string;
+	email: string;
+	phone: string | null;
+	passwordHash: string;
+	role: string | null;
+	canCreate: boolean | null;
+	canEdit: boolean | null;
+	firstName: string | null;
+	venueId: string | null;
+	franchiseId: string | null;
+	emails: string[] | null;
+};
 
 export async function readSession(cookies: Cookies): Promise<AuthUser | null> {
 	const token = cookies.get(SESSION_COOKIE);
@@ -130,7 +159,7 @@ export async function registerUser(input: {
 		const [row] = await db
 			.insert(users)
 			.values({ email, phone, passwordHash, firstName, role: 'user', canCreate: false, canEdit: false, emails: [] })
-			.returning();
+			.returning(authColumns);
 		if (!row) return { ok: false, error: 'Could not create the account.' };
 		return { ok: true, user: toAuthUser(row) };
 	} catch (error) {
@@ -310,7 +339,7 @@ export async function loginUser(
 			? await findUserByEmail(normalizeEmail(trimmed))
 			: (
 					await db
-						.select()
+						.select(authColumns)
 						.from(users)
 						.where(eq(users.phone, normalizePhone(trimmed)))
 						.limit(1)
@@ -353,9 +382,9 @@ export async function clearAdminSession(cookies: Cookies): Promise<void> {
 	cookies.delete(SESSION_COOKIE, { path: '/' });
 }
 
-async function findUserByEmail(email: string): Promise<UserRow | undefined> {
+async function findUserByEmail(email: string): Promise<AuthRow | undefined> {
 	const [row] = await db
-		.select()
+		.select(authColumns)
 		.from(users)
 		.where(or(eq(users.email, email), sql`${email} = ANY(${users.emails})`))
 		.limit(1);

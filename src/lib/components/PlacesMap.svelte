@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import type { Circle, Map as LeafletMap, Marker } from 'leaflet';
 	import type { MapFrame, MapPlace } from '$lib/venue';
 
@@ -22,6 +22,7 @@
 	let hereMarker: Marker | undefined;
 	let hereCircle: Circle | undefined;
 	let locateError = $state('');
+	let expanded = $state(true);
 	let reportView: ((frame: MapFrame) => void) | undefined;
 	let reportSelect: ((place: MapPlace | null) => void) | undefined;
 	let fittedKey = '';
@@ -198,10 +199,28 @@
 		map.setView(marker.getLatLng(), zoom, { animate: false });
 	}
 
+	async function redraw() {
+		await tick();
+		map?.invalidateSize();
+	}
+
+	function toggleMap() {
+		expanded = !expanded;
+		void redraw();
+	}
+
 	export function focus(id: string) {
 		const marker = markers.get(id);
 		if (!map || !marker) return;
 		map.closePopup();
+		if (!expanded) {
+			expanded = true;
+			void redraw().then(() => {
+				center(id);
+				marker.openPopup();
+			});
+			return;
+		}
 		center(id);
 		marker.openPopup();
 	}
@@ -274,14 +293,27 @@
 </script>
 
 <div class="relative">
-	<div bind:this={root} class="h-[min(70vh,640px)] w-full border border-line bg-paper-2"></div>
-	<button
-		type="button"
-		class="absolute top-3 right-3 z-[500] border border-ink bg-paper px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)]"
-		onclick={goHere}
-	>
-		Your location
-	</button>
+	<div
+		bind:this={root}
+		class="w-full border border-line bg-paper-2 {expanded ? 'h-[min(70vh,640px)]' : 'h-36'}"
+	></div>
+	<div class="absolute top-3 right-3 z-[500] flex gap-2">
+		<button
+			type="button"
+			class="border border-ink bg-paper px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)]"
+			aria-expanded={expanded}
+			onclick={toggleMap}
+		>
+			{expanded ? 'Minimise' : 'Maximise'}
+		</button>
+		<button
+			type="button"
+			class="border border-ink bg-paper px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)]"
+			onclick={goHere}
+		>
+			Your location
+		</button>
+	</div>
 	{#if locateError}
 		<p class="absolute top-14 right-3 z-[500] max-w-56 border border-accent bg-paper px-3 py-2 text-xs text-accent">
 			{locateError}

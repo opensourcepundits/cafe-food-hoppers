@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import type { Map as LeafletMap, Marker } from 'leaflet';
+	import type { Circle, Map as LeafletMap, Marker } from 'leaflet';
 	import type { MapFrame, MapPlace } from '$lib/venue';
 
 	let {
@@ -19,6 +19,9 @@
 	let map: LeafletMap | undefined = $state();
 	const markers = new Map<string, Marker>();
 	let leaflet: typeof import('leaflet') | undefined;
+	let hereMarker: Marker | undefined;
+	let hereCircle: Circle | undefined;
+	let locateError = $state('');
 	let reportView: ((frame: MapFrame) => void) | undefined;
 	let reportSelect: ((place: MapPlace | null) => void) | undefined;
 	let fittedKey = '';
@@ -140,6 +143,53 @@
 		sync(list);
 	});
 
+	function showHere(latlng: { lat: number; lng: number }, accuracy: number) {
+		if (!map || !leaflet) return;
+		const icon = leaflet.divIcon({
+			className: 'here-icon',
+			html: '<span class="here-dot"></span>',
+			iconSize: [18, 18],
+			iconAnchor: [9, 9]
+		});
+		if (hereMarker) hereMarker.setLatLng(latlng);
+		else {
+			hereMarker = leaflet
+				.marker(latlng, { icon, title: 'You are here', keyboard: false, zIndexOffset: 800 })
+				.addTo(map);
+		}
+		if (accuracy > 0 && accuracy <= 1500) {
+			if (hereCircle) {
+				hereCircle.setLatLng(latlng);
+				hereCircle.setRadius(accuracy);
+			} else {
+				hereCircle = leaflet
+					.circle(latlng, {
+						radius: accuracy,
+						color: '#1d4ed8',
+						weight: 1,
+						fillColor: '#1d4ed8',
+						fillOpacity: 0.12,
+						interactive: false
+					})
+					.addTo(map);
+			}
+		} else {
+			hereCircle?.remove();
+			hereCircle = undefined;
+		}
+	}
+
+	function goHere() {
+		if (!map) return;
+		locateError = '';
+		if (hereMarker) {
+			map.stop();
+			map.setView(hereMarker.getLatLng(), Math.max(map.getZoom(), 15), { animate: false });
+			return;
+		}
+		map.locate({ watch: true, setView: true, maxZoom: 15, enableHighAccuracy: true });
+	}
+
 	function center(id: string) {
 		const marker = markers.get(id);
 		if (!map || !marker) return;
@@ -191,12 +241,25 @@
 				}, 250);
 			};
 			next.on('moveend', publish);
+			next.on('locationfound', (event) => {
+				const found = event as typeof event & { latlng: { lat: number; lng: number }; accuracy: number };
+				locateError = '';
+				showHere(found.latlng, found.accuracy);
+			});
+			next.on('locationerror', (event) => {
+				const failed = event as typeof event & { code?: number };
+				if (failed.code === 1) locateError = 'Allow location access to show where you are.';
+			});
 
 			map = next;
+			next.locate({ watch: true, setView: false, enableHighAccuracy: true, maximumAge: 15000 });
 			publish();
 			remove = () => {
 				clearTimeout(viewTimer);
+				next.stopLocate();
 				markers.clear();
+				hereMarker = undefined;
+				hereCircle = undefined;
 				next.remove();
 				map = undefined;
 			};
@@ -212,6 +275,18 @@
 
 <div class="relative">
 	<div bind:this={root} class="h-[min(70vh,640px)] w-full border border-line bg-paper-2"></div>
+	<button
+		type="button"
+		class="absolute top-3 right-3 z-[500] border border-ink bg-paper px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)]"
+		onclick={goHere}
+	>
+		Your location
+	</button>
+	{#if locateError}
+		<p class="absolute top-14 right-3 z-[500] max-w-56 border border-accent bg-paper px-3 py-2 text-xs text-accent">
+			{locateError}
+		</p>
+	{/if}
 	{#if selected}
 		<div class="absolute bottom-3 left-3 z-20 w-64 border border-ink bg-paper px-3.5 py-3 shadow-[4px_4px_0_0_var(--color-ink)]">
 			<div class="flex items-start justify-between gap-3">
@@ -254,6 +329,21 @@
 </div>
 
 <style>
+	:global(.here-icon) {
+		background: transparent;
+		border: none;
+	}
+
+	:global(.here-dot) {
+		display: block;
+		width: 16px;
+		height: 16px;
+		border: 3px solid #fff;
+		border-radius: 999px;
+		background: #1d4ed8;
+		box-shadow: 0 0 0 2px #1d4ed8;
+	}
+
 	:global(.pin-icon) {
 		background: transparent;
 		border: none;

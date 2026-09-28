@@ -59,7 +59,7 @@
 	<p class="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">Map</p>
 	<h2 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Every place, on the island.</h2>
 	<p class="mt-3 text-sm leading-6 text-muted">
-		Filter the pins, pan the map to reorder the list, and click a pin for hours and setup.
+		Filter the pins, pan the map to reorder the list, and click a pin for hours and setup. A blue dot marks this device.
 	</p>
 </section>
 

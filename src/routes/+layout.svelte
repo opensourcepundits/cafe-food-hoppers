@@ -6,15 +6,10 @@
 	import AddToHomeScreen from '$lib/components/AddToHomeScreen.svelte';
 	import EmergencyMeeting from '$lib/components/EmergencyMeeting.svelte';
 	import { dropThisDevice } from '$lib/push-client';
-	import { applySiteFont, isSiteFont, siteFontFamily, siteFonts, type SiteFont } from '$lib/site-font';
 
 	let { children, data } = $props();
 
-	let font = $state<SiteFont>('plex');
-	let fontSelect = $state<HTMLSelectElement | null>(null);
-
 	const path = $derived(page.url.pathname);
-	const chosenFamily = $derived(siteFontFamily(font));
 	const signedInName = $derived(
 		data.user?.firstName?.trim() || data.user?.email.split('@')[0] || ''
 	);
@@ -24,23 +19,7 @@
 			: '/profile'
 	);
 
-	function chooseFont(next: string) {
-		if (!isSiteFont(next)) return;
-		font = next;
-		localStorage.setItem('place-font', next);
-		applySiteFont(next);
-	}
-
-	function onFontChange() {
-		chooseFont(fontSelect?.value ?? '');
-	}
-
 	onMount(() => {
-		const stored = localStorage.getItem('place-font');
-		if (isSiteFont(stored)) {
-			font = stored;
-			applySiteFont(stored);
-		}
 		const onSubmit = (event: Event) => {
 			const form = event.target;
 			if (!(form instanceof HTMLFormElement)) return;
@@ -66,12 +45,6 @@
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 	<meta name="apple-mobile-web-app-title" content="Place" />
-	<link rel="preconnect" href="https://fonts.googleapis.com" />
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-	<link
-		href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Lato:ital,wght@0,400;0,700;1,400;1,700&display=swap"
-		rel="stylesheet"
-	/>
 </svelte:head>
 
 <div class="min-h-screen">
@@ -104,21 +77,6 @@
 				>
 					Alerts
 				</a>
-				<select
-					aria-label="Font"
-					bind:this={fontSelect}
-					class="cursor-pointer border-b bg-transparent pb-0.5 outline-none {font === 'plex'
-						? 'border-transparent text-muted'
-						: 'border-ink text-ink'}"
-					style:font-family={chosenFamily ? `${chosenFamily}, sans-serif` : undefined}
-					value={font}
-					onchange={onFontChange}
-					oninput={onFontChange}
-				>
-					{#each siteFonts as option (option.id)}
-						<option value={option.id} style:font-family={option.family || undefined}>{option.label}</option>
-					{/each}
-				</select>
 				{#if signedInName}
 					<a
 						href={accountHref}

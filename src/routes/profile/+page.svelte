@@ -80,7 +80,7 @@
 <section class="mb-10">
 	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Theme</h3>
 	<p class="mt-3 max-w-lg text-sm leading-6 text-muted">
-		Professional uses Libron. Casual uses Gumbo.
+		Professional uses IBM Plex. Casual uses Gumbo.
 	</p>
 	<div class="mt-3 inline-flex border border-line" role="group" aria-label="Theme">
 		<button

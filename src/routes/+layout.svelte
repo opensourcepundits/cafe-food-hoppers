@@ -36,15 +36,25 @@
 		return fontOptions.some((item) => item.id === value);
 	}
 
+	function applyFont(next: SiteFont) {
+		const root = document.documentElement;
+		if (next === 'plex') delete root.dataset.font;
+		else root.dataset.font = next;
+	}
+
 	function chooseFont(next: SiteFont) {
 		font = next;
 		fontMenu = false;
 		localStorage.setItem('place-font', next);
+		applyFont(next);
 	}
 
 	onMount(() => {
 		const stored = localStorage.getItem('place-font');
-		if (isSiteFont(stored)) font = stored;
+		if (isSiteFont(stored)) {
+			font = stored;
+			applyFont(stored);
+		}
 		const onSubmit = (event: Event) => {
 			const form = event.target;
 			if (!(form instanceof HTMLFormElement)) return;
@@ -69,8 +79,7 @@
 
 	$effect(() => {
 		if (typeof document === 'undefined') return;
-		if (font === 'plex') delete document.documentElement.dataset.font;
-		else document.documentElement.dataset.font = font;
+		applyFont(font);
 	});
 </script>
 

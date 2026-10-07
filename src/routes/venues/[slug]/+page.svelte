@@ -71,7 +71,12 @@
 			<h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">{venue.name}</h2>
 			{#if data.user}
 				<form method="POST" action="?/favourite">
-					<button type="submit" class="border border-ink px-3 py-1 text-sm">
+					<button
+						type="submit"
+						class="px-3 py-1 text-sm {data.favourite
+							? 'border border-ink bg-ink text-paper'
+							: 'border border-line bg-paper text-muted hover:border-ink hover:text-ink'}"
+					>
 						{data.favourite ? 'Saved' : 'Save'}
 					</button>
 				</form>

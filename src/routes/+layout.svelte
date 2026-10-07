@@ -76,12 +76,12 @@
 					Map
 				</a>
 				<a
-					href="/specials"
-					class="border-b pb-0.5 {path.startsWith('/specials')
+					href="/alerts"
+					class="border-b pb-0.5 {path.startsWith('/alerts')
 						? 'border-ink text-ink'
 						: 'border-transparent text-muted hover:text-ink'}"
 				>
-					Specials
+					Alerts
 				</a>
 				{#if signedInName}
 					<a

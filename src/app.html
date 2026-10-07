@@ -3,6 +3,14 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			try {
+				var placeFont = localStorage.getItem('place-font');
+				if (placeFont === 'libron' || placeFont === 'lato' || placeFont === 'gumbo') {
+					document.documentElement.setAttribute('data-font', placeFont);
+				}
+			} catch (e) {}
+		</script>
 		<meta name="text-scale" content="scale" />
 		%sveltekit.head%
 	</head>

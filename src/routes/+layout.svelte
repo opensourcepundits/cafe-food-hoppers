@@ -11,6 +11,7 @@
 	let { children, data } = $props();
 
 	let font = $state<SiteFont>('plex');
+	let fontSelect = $state<HTMLSelectElement | null>(null);
 
 	const path = $derived(page.url.pathname);
 	const chosenFamily = $derived(siteFontFamily(font));
@@ -27,14 +28,18 @@
 		if (!isSiteFont(next)) return;
 		font = next;
 		localStorage.setItem('place-font', next);
-		void applySiteFont(next);
+		applySiteFont(next);
+	}
+
+	function onFontChange() {
+		chooseFont(fontSelect?.value ?? '');
 	}
 
 	onMount(() => {
 		const stored = localStorage.getItem('place-font');
 		if (isSiteFont(stored)) {
 			font = stored;
-			void applySiteFont(stored);
+			applySiteFont(stored);
 		}
 		const onSubmit = (event: Event) => {
 			const form = event.target;
@@ -101,12 +106,14 @@
 				</a>
 				<select
 					aria-label="Font"
+					bind:this={fontSelect}
 					class="cursor-pointer border-b bg-transparent pb-0.5 outline-none {font === 'plex'
 						? 'border-transparent text-muted'
 						: 'border-ink text-ink'}"
 					style:font-family={chosenFamily ? `${chosenFamily}, sans-serif` : undefined}
 					value={font}
-					onchange={(event) => chooseFont(event.currentTarget.value)}
+					onchange={onFontChange}
+					oninput={onFontChange}
 				>
 					{#each siteFonts as option (option.id)}
 						<option value={option.id} style:font-family={option.family || undefined}>{option.label}</option>

@@ -8,6 +8,7 @@
 	import { dropThisDevice } from '$lib/push-client';
 
 	let { children, data } = $props();
+	let libron = $state(false);
 
 	const path = $derived(page.url.pathname);
 	const signedInName = $derived(
@@ -20,6 +21,7 @@
 	);
 
 	onMount(() => {
+		libron = localStorage.getItem('place-font') === 'libron';
 		const onSubmit = (event: Event) => {
 			const form = event.target;
 			if (!(form instanceof HTMLFormElement)) return;
@@ -34,6 +36,16 @@
 		document.addEventListener('submit', onSubmit);
 		return () => document.removeEventListener('submit', onSubmit);
 	});
+
+	$effect(() => {
+		if (typeof document === 'undefined') return;
+		document.documentElement.classList.toggle('font-libron', libron);
+	});
+
+	function toggleLibron() {
+		libron = !libron;
+		localStorage.setItem('place-font', libron ? 'libron' : 'plex');
+	}
 </script>
 
 <svelte:head>
@@ -83,6 +95,14 @@
 				>
 					Alerts
 				</a>
+				<button
+					type="button"
+					class="border-b pb-0.5 {libron ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}"
+					aria-pressed={libron}
+					onclick={toggleLibron}
+				>
+					Libron
+				</button>
 				{#if signedInName}
 					<a
 						href={accountHref}

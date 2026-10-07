@@ -1,168 +1,16 @@
 @import 'tailwindcss';
 
 @font-face {
-	font-family: 'Libron';
-	src: url('/fonts/Libron-Regular.woff2') format('woff2');
-	font-weight: 400;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Libron';
-	src: url('/fonts/Libron-Italic.woff2') format('woff2');
-	font-weight: 400;
-	font-style: italic;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Libron';
-	src: url('/fonts/Libron-Bold.woff2') format('woff2');
-	font-weight: 500;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Libron';
-	src: url('/fonts/Libron-Bold.woff2') format('woff2');
-	font-weight: 600;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Libron';
-	src: url('/fonts/Libron-Bold.woff2') format('woff2');
-	font-weight: 700;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Libron';
-	src: url('/fonts/Libron-BoldItalic.woff2') format('woff2');
-	font-weight: 500;
-	font-style: italic;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Libron';
-	src: url('/fonts/Libron-BoldItalic.woff2') format('woff2');
-	font-weight: 600;
-	font-style: italic;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Libron';
-	src: url('/fonts/Libron-BoldItalic.woff2') format('woff2');
-	font-weight: 700;
-	font-style: italic;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Lato';
-	src: url('/fonts/Lato-Regular.ttf') format('truetype');
-	font-weight: 400;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Lato';
-	src: url('/fonts/Lato-Italic.ttf') format('truetype');
-	font-weight: 400;
-	font-style: italic;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Lato';
-	src: url('/fonts/Lato-Bold.ttf') format('truetype');
-	font-weight: 500;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Lato';
-	src: url('/fonts/Lato-Bold.ttf') format('truetype');
-	font-weight: 600;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Lato';
-	src: url('/fonts/Lato-Bold.ttf') format('truetype');
-	font-weight: 700;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Lato';
-	src: url('/fonts/Lato-BoldItalic.ttf') format('truetype');
-	font-weight: 500;
-	font-style: italic;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Lato';
-	src: url('/fonts/Lato-BoldItalic.ttf') format('truetype');
-	font-weight: 600;
-	font-style: italic;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Lato';
-	src: url('/fonts/Lato-BoldItalic.ttf') format('truetype');
-	font-weight: 700;
-	font-style: italic;
-	font-display: swap;
-}
-
-@font-face {
 	font-family: 'Gumbo';
 	src: url('/fonts/Gumbo.otf') format('opentype');
-	font-weight: 400;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Gumbo';
-	src: url('/fonts/Gumbo.otf') format('opentype');
-	font-weight: 500;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Gumbo';
-	src: url('/fonts/Gumbo.otf') format('opentype');
-	font-weight: 600;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Gumbo';
-	src: url('/fonts/Gumbo.otf') format('opentype');
-	font-weight: 700;
+	font-weight: 100 900;
 	font-style: normal;
 	font-display: swap;
 }
 
 @theme {
-	--font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
-	--font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+	--font-sans: 'Gumbo', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: 'Gumbo', ui-sans-serif, system-ui, sans-serif;
 	--color-ink: #171412;
 	--color-paper: #f4f1ea;
 	--color-paper-2: #ebe6db;
@@ -176,36 +24,6 @@
 html {
 	background: var(--color-paper);
 	color: var(--color-ink);
-}
-
-html[data-font='libron'] {
-	--font-sans: 'Libron', ui-sans-serif, system-ui, sans-serif;
-	--font-mono: 'Libron', ui-sans-serif, system-ui, sans-serif;
-}
-
-html[data-font='lato'] {
-	--font-sans: 'Lato', ui-sans-serif, system-ui, sans-serif;
-	--font-mono: 'Lato', ui-sans-serif, system-ui, sans-serif;
-}
-
-html[data-font='gumbo'] {
-	--font-sans: 'Gumbo', ui-sans-serif, system-ui, sans-serif;
-	--font-mono: 'Gumbo', ui-sans-serif, system-ui, sans-serif;
-}
-
-html[data-font='libron'] body,
-html[data-font='libron'] body * {
-	font-family: 'Libron', ui-sans-serif, system-ui, sans-serif !important;
-}
-
-html[data-font='lato'] body,
-html[data-font='lato'] body * {
-	font-family: 'Lato', ui-sans-serif, system-ui, sans-serif !important;
-}
-
-html[data-font='gumbo'] body,
-html[data-font='gumbo'] body * {
-	font-family: 'Gumbo', ui-sans-serif, system-ui, sans-serif !important;
 }
 
 body {

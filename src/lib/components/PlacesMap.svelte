@@ -34,7 +34,11 @@
 
 	function pinIcon(place: MapPlace) {
 		const tone = place.open ? 'pin-dot-open' : 'pin-dot-closed';
-		const pulse = place.specialPulse ? ` pin-pulse-${place.specialPulse}` : '';
+		const pulse = place.alert
+			? ' pin-pulse-alert'
+			: place.specialPulse
+				? ` pin-pulse-${place.specialPulse}`
+				: '';
 		return leaflet?.divIcon({
 			className: `pin-icon${pulse}`,
 			html: `<span class="pin-ring"></span><span class="pin-ring pin-ring-late"></span><span class="pin-dot ${tone}"></span>`,
@@ -410,7 +414,8 @@
 
 	:global(.pin-pulse-ongoing .pin-ring),
 	:global(.pin-pulse-ending .pin-ring),
-	:global(.pin-pulse-upcoming .pin-ring) {
+	:global(.pin-pulse-upcoming .pin-ring),
+	:global(.pin-pulse-alert .pin-ring) {
 		display: block;
 		position: absolute;
 		top: 50%;
@@ -447,6 +452,15 @@
 
 	:global(.pin-pulse-ending .pin-ring-late) {
 		animation-delay: 0.28s;
+	}
+
+	:global(.pin-pulse-alert .pin-ring) {
+		border: 3px solid #b4532a;
+		animation: pin-pulse-ongoing 1.6s ease-out infinite;
+	}
+
+	:global(.pin-pulse-alert .pin-ring-late) {
+		animation-delay: 0.8s;
 	}
 
 	:global(.pin-card-kicker) {

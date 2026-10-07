@@ -8,9 +8,21 @@
 	import { dropThisDevice } from '$lib/push-client';
 
 	let { children, data } = $props();
-	let libron = $state(false);
+
+	const fontOptions = [
+		{ id: 'plex', label: 'IBM Plex' },
+		{ id: 'libron', label: 'Libron' },
+		{ id: 'lato', label: 'Lato' },
+		{ id: 'gumbo', label: 'Gumbo' }
+	] as const;
+	type SiteFont = (typeof fontOptions)[number]['id'];
+
+	let font = $state<SiteFont>('plex');
+	let fontMenu = $state(false);
+	let fontRoot: HTMLDivElement | undefined = $state();
 
 	const path = $derived(page.url.pathname);
+	const fontLabel = $derived(fontOptions.find((item) => item.id === font)?.label ?? 'IBM Plex');
 	const signedInName = $derived(
 		data.user?.firstName?.trim() || data.user?.email.split('@')[0] || ''
 	);
@@ -20,8 +32,19 @@
 			: '/profile'
 	);
 
+	function isSiteFont(value: string | null): value is SiteFont {
+		return fontOptions.some((item) => item.id === value);
+	}
+
+	function chooseFont(next: SiteFont) {
+		font = next;
+		fontMenu = false;
+		localStorage.setItem('place-font', next);
+	}
+
 	onMount(() => {
-		libron = localStorage.getItem('place-font') === 'libron';
+		const stored = localStorage.getItem('place-font');
+		if (isSiteFont(stored)) font = stored;
 		const onSubmit = (event: Event) => {
 			const form = event.target;
 			if (!(form instanceof HTMLFormElement)) return;
@@ -33,19 +56,22 @@
 				form.requestSubmit();
 			});
 		};
+		const closeFontMenu = (event: MouseEvent) => {
+			if (!(event.target instanceof Node) || !fontRoot?.contains(event.target)) fontMenu = false;
+		};
 		document.addEventListener('submit', onSubmit);
-		return () => document.removeEventListener('submit', onSubmit);
+		document.addEventListener('click', closeFontMenu);
+		return () => {
+			document.removeEventListener('submit', onSubmit);
+			document.removeEventListener('click', closeFontMenu);
+		};
 	});
 
 	$effect(() => {
 		if (typeof document === 'undefined') return;
-		document.documentElement.classList.toggle('font-libron', libron);
+		if (font === 'plex') delete document.documentElement.dataset.font;
+		else document.documentElement.dataset.font = font;
 	});
-
-	function toggleLibron() {
-		libron = !libron;
-		localStorage.setItem('place-font', libron ? 'libron' : 'plex');
-	}
 </script>
 
 <svelte:head>
@@ -95,14 +121,41 @@
 				>
 					Alerts
 				</a>
-				<button
-					type="button"
-					class="border-b pb-0.5 {libron ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}"
-					aria-pressed={libron}
-					onclick={toggleLibron}
-				>
-					Libron
-				</button>
+				<div class="relative" bind:this={fontRoot}>
+					<button
+						type="button"
+						class="border-b pb-0.5 {fontMenu || font !== 'plex'
+							? 'border-ink text-ink'
+							: 'border-transparent text-muted hover:text-ink'}"
+						aria-expanded={fontMenu}
+						aria-haspopup="listbox"
+						onclick={() => (fontMenu = !fontMenu)}
+					>
+						{fontLabel}
+					</button>
+					{#if fontMenu}
+						<ul
+							class="absolute right-0 z-40 mt-3 min-w-36 border border-ink bg-paper py-1 normal-case tracking-normal shadow-[4px_4px_0_0_var(--color-ink)]"
+							role="listbox"
+						>
+							{#each fontOptions as option (option.id)}
+								<li>
+									<button
+										type="button"
+										class="block w-full px-3 py-1.5 text-left text-sm {font === option.id
+											? 'bg-ink text-paper'
+											: 'text-ink hover:bg-paper-2'}"
+										role="option"
+										aria-selected={font === option.id}
+										onclick={() => chooseFont(option.id)}
+									>
+										{option.label}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
 				{#if signedInName}
 					<a
 						href={accountHref}

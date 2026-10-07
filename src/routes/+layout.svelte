@@ -6,23 +6,14 @@
 	import AddToHomeScreen from '$lib/components/AddToHomeScreen.svelte';
 	import EmergencyMeeting from '$lib/components/EmergencyMeeting.svelte';
 	import { dropThisDevice } from '$lib/push-client';
+	import { applySiteFont, isSiteFont, siteFontFamily, siteFonts, type SiteFont } from '$lib/site-font';
 
 	let { children, data } = $props();
 
-	const fontOptions = [
-		{ id: 'plex', label: 'IBM Plex' },
-		{ id: 'libron', label: 'Libron' },
-		{ id: 'lato', label: 'Lato' },
-		{ id: 'gumbo', label: 'Gumbo' }
-	] as const;
-	type SiteFont = (typeof fontOptions)[number]['id'];
-
 	let font = $state<SiteFont>('plex');
-	let fontMenu = $state(false);
-	let fontRoot: HTMLDivElement | undefined = $state();
 
 	const path = $derived(page.url.pathname);
-	const fontLabel = $derived(fontOptions.find((item) => item.id === font)?.label ?? 'IBM Plex');
+	const chosenFamily = $derived(siteFontFamily(font));
 	const signedInName = $derived(
 		data.user?.firstName?.trim() || data.user?.email.split('@')[0] || ''
 	);
@@ -32,28 +23,18 @@
 			: '/profile'
 	);
 
-	function isSiteFont(value: string | null): value is SiteFont {
-		return fontOptions.some((item) => item.id === value);
-	}
-
-	function applyFont(next: SiteFont) {
-		const root = document.documentElement;
-		if (next === 'plex') delete root.dataset.font;
-		else root.dataset.font = next;
-	}
-
-	function chooseFont(next: SiteFont) {
+	function chooseFont(next: string) {
+		if (!isSiteFont(next)) return;
 		font = next;
-		fontMenu = false;
 		localStorage.setItem('place-font', next);
-		applyFont(next);
+		void applySiteFont(next);
 	}
 
 	onMount(() => {
 		const stored = localStorage.getItem('place-font');
 		if (isSiteFont(stored)) {
 			font = stored;
-			applyFont(stored);
+			void applySiteFont(stored);
 		}
 		const onSubmit = (event: Event) => {
 			const form = event.target;
@@ -66,20 +47,8 @@
 				form.requestSubmit();
 			});
 		};
-		const closeFontMenu = (event: MouseEvent) => {
-			if (!(event.target instanceof Node) || !fontRoot?.contains(event.target)) fontMenu = false;
-		};
 		document.addEventListener('submit', onSubmit);
-		document.addEventListener('click', closeFontMenu);
-		return () => {
-			document.removeEventListener('submit', onSubmit);
-			document.removeEventListener('click', closeFontMenu);
-		};
-	});
-
-	$effect(() => {
-		if (typeof document === 'undefined') return;
-		applyFont(font);
+		return () => document.removeEventListener('submit', onSubmit);
 	});
 </script>
 
@@ -95,7 +64,7 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
-		href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+		href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Lato:ital,wght@0,400;0,700;1,400;1,700&display=swap"
 		rel="stylesheet"
 	/>
 </svelte:head>
@@ -130,41 +99,19 @@
 				>
 					Alerts
 				</a>
-				<div class="relative" bind:this={fontRoot}>
-					<button
-						type="button"
-						class="border-b pb-0.5 {fontMenu || font !== 'plex'
-							? 'border-ink text-ink'
-							: 'border-transparent text-muted hover:text-ink'}"
-						aria-expanded={fontMenu}
-						aria-haspopup="listbox"
-						onclick={() => (fontMenu = !fontMenu)}
-					>
-						{fontLabel}
-					</button>
-					{#if fontMenu}
-						<ul
-							class="absolute right-0 z-40 mt-3 min-w-36 border border-ink bg-paper py-1 normal-case tracking-normal shadow-[4px_4px_0_0_var(--color-ink)]"
-							role="listbox"
-						>
-							{#each fontOptions as option (option.id)}
-								<li>
-									<button
-										type="button"
-										class="block w-full px-3 py-1.5 text-left text-sm {font === option.id
-											? 'bg-ink text-paper'
-											: 'text-ink hover:bg-paper-2'}"
-										role="option"
-										aria-selected={font === option.id}
-										onclick={() => chooseFont(option.id)}
-									>
-										{option.label}
-									</button>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-				</div>
+				<select
+					aria-label="Font"
+					class="cursor-pointer border-b bg-transparent pb-0.5 outline-none {font === 'plex'
+						? 'border-transparent text-muted'
+						: 'border-ink text-ink'}"
+					style:font-family={chosenFamily ? `${chosenFamily}, sans-serif` : undefined}
+					value={font}
+					onchange={(event) => chooseFont(event.currentTarget.value)}
+				>
+					{#each siteFonts as option (option.id)}
+						<option value={option.id} style:font-family={option.family || undefined}>{option.label}</option>
+					{/each}
+				</select>
 				{#if signedInName}
 					<a
 						href={accountHref}

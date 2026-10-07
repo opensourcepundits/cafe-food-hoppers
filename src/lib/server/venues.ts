@@ -5,6 +5,7 @@ import type { AuthUser } from '$lib/server/auth';
 import type { VenueWrite } from '$lib/server/venue-input';
 import {
 	activeAnnouncements,
+	alertTiming,
 	isWorkFriendly,
 	distanceMeters,
 	isOpenNow,
@@ -29,6 +30,7 @@ import {
 	parseMapsPin,
 	specialPulse,
 	wifiLabel,
+	type AlertFeedItem,
 	type MapPlace,
 	type SpecialFeedItem,
 	type Venue,
@@ -405,7 +407,8 @@ function toMapPlace(venue: LiveVenue, pin: { lat: number; lng: number }): MapPla
 		parking: venue.workInfo.parking?.trim() || null,
 		bits: bits.slice(0, 5),
 		special: venue.ongoingSpecials[0]?.title ?? venue.upcomingSpecials[0]?.title ?? null,
-		alert: venue.alerts.length > 0
+		alert: venue.alerts.length > 0,
+		alertTitles: venue.alerts.map((item) => item.title.trim()).filter(Boolean)
 	};
 }
 
@@ -426,6 +429,36 @@ export async function listMapPlaces(
 	}
 
 	return { places, missing };
+}
+
+export async function listAlertsFeed(savedVenueIds: ReadonlySet<string> = new Set()): Promise<AlertFeedItem[]> {
+	const rows = await db
+		.select()
+		.from(venues)
+		.orderBy(desc(venues.isFeatured), desc(venues.featuredPriority), venues.name);
+
+	const feed: AlertFeedItem[] = [];
+
+	for (const venue of rows.map(mapVenue)) {
+		for (const alert of venue.announcements) {
+			const status = alertTiming(alert);
+			if (status === 'done') continue;
+			feed.push({
+				venueId: venue.id,
+				venueName: venue.name,
+				venueSlug: venue.slug,
+				district: venue.district,
+				alert,
+				status,
+				saved: savedVenueIds.has(venue.id)
+			});
+		}
+	}
+
+	return feed.sort((a, b) => {
+		if (a.saved !== b.saved) return a.saved ? -1 : 1;
+		return Date.parse(a.alert.starts_at) - Date.parse(b.alert.starts_at);
+	});
 }
 
 export async function listSpecialsFeed(): Promise<SpecialFeedItem[]> {

@@ -99,6 +99,16 @@ export type SpecialFeedItem = {
 	status: Exclude<SpecialTiming, 'ended'>;
 };
 
+export type AlertFeedItem = {
+	venueId: string;
+	venueName: string;
+	venueSlug: string;
+	district: string;
+	alert: Announcement;
+	status: Exclude<AlertTiming, 'done'>;
+	saved: boolean;
+};
+
 export type MenuPrice = {
 	label: string;
 	price_mur: number;
@@ -178,6 +188,7 @@ export type MapPlace = {
 	bits: string[];
 	special: string | null;
 	alert: boolean;
+	alertTitles: string[];
 };
 
 export type MapFrame = {

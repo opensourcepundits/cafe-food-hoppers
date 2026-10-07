@@ -42,8 +42,8 @@
 		return leaflet?.divIcon({
 			className: `pin-icon${pulse}`,
 			html: `<span class="pin-ring"></span><span class="pin-ring pin-ring-late"></span><span class="pin-dot ${tone}"></span>`,
-			iconSize: [72, 72],
-			iconAnchor: [36, 36]
+			iconSize: [60, 60],
+			iconAnchor: [30, 30]
 		});
 	}
 
@@ -69,6 +69,7 @@
 		head.append(name, status);
 
 		card.append(line('pin-card-kicker', place.district), head);
+		for (const title of place.alertTitles) card.append(line('pin-card-alert', title));
 		card.append(line('pin-card-meta', [place.hours, place.wifi ?? 'No WiFi'].join(' · ')));
 
 		const labels = [place.noise, place.lighting.join(' · '), place.parking].filter(
@@ -348,6 +349,9 @@
 					{selected.open ? 'Open' : 'Closed'}
 				</span>
 			</div>
+			{#each selected.alertTitles as title, index (`${selected.id}-alert-${index}`)}
+				<p class="mt-2 text-sm font-medium leading-5 text-accent">{title}</p>
+			{/each}
 			<p class="mt-1.5 text-xs leading-5 text-muted">
 				{selected.hours} · {selected.wifi ?? 'No WiFi'}
 			</p>
@@ -391,10 +395,10 @@
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		width: 22px;
-		height: 22px;
-		margin: -11px 0 0 -11px;
-		border: 3px solid #fff;
+		width: 18px;
+		height: 18px;
+		margin: -9px 0 0 -9px;
+		border: 2px solid #fff;
 		border-radius: 999px;
 		box-shadow: 0 0 0 2px #111, 0 2px 8px rgba(0, 0, 0, 0.45);
 		cursor: pointer;
@@ -420,9 +424,9 @@
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		width: 28px;
-		height: 28px;
-		margin: -14px 0 0 -14px;
+		width: 22px;
+		height: 22px;
+		margin: -11px 0 0 -11px;
 		border-radius: 999px;
 		pointer-events: none;
 	}
@@ -477,6 +481,14 @@
 		justify-content: space-between;
 		gap: 8px;
 		margin-top: 2px;
+	}
+
+	:global(.pin-card-alert) {
+		margin-top: 6px;
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.35;
+		color: var(--color-accent);
 	}
 
 	:global(.pin-card-name) {

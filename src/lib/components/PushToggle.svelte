@@ -51,7 +51,9 @@
 	<p class="text-sm text-accent">Could not enable notifications.</p>
 	<button type="button" class="{button} mt-2" onclick={enable}>Try again</button>
 {:else if status === 'on'}
-	<button type="button" class={button} onclick={disable}>Notifications on</button>
+	<button type="button" class="border border-open bg-open px-3 py-1.5 text-sm text-paper" onclick={disable}>
+		Notifications: on
+	</button>
 {:else}
 	<button type="button" class={button} disabled={status === 'working'} onclick={enable}>
 		{status === 'working' ? 'Enabling…' : 'Enable notifications'}

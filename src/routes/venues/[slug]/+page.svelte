@@ -106,7 +106,10 @@
 				{/each}
 			</ul>
 		{/if}
-		<p class="mt-2 flex items-center gap-2 text-sm text-muted">
+		<div class="mt-6 lg:hidden">
+			{@render workSetup()}
+		</div>
+		<p class="mt-6 flex items-center gap-2 text-sm text-muted lg:mt-2">
 			<MapPin class="size-4" />
 			{venue.district}
 			{#if maps}
@@ -190,36 +193,10 @@
 		<MenuList menu={venue.menu} />
 	</section>
 
-	<aside class="space-y-8">
-		<section>
-			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Work setup</h3>
-			<ul class="mt-4 space-y-3 text-sm">
-				<li class="flex items-start gap-2">
-					<Wifi class="mt-0.5 size-4 text-muted" />
-					<span>{wifiLabel(venue.workInfo) ?? 'No WiFi listed'}</span>
-				</li>
-				<li class="flex items-start gap-2">
-					<Plug class="mt-0.5 size-4 text-muted" />
-					<span>
-						{#if outletRatingOf(venue.workInfo)}
-							{outletRatingLabel(outletRatingOf(venue.workInfo))} · {outletPoints(outletRatingOf(venue.workInfo))} / 3
-						{:else}
-							{outletLabel(venue.workInfo.outlet_access, venue.workInfo.outlets) ?? 'Outlets unknown'}
-						{/if}
-					</span>
-				</li>
-				<li class="flex items-start gap-2">
-					<Volume2 class="mt-0.5 size-4 text-muted" />
-					<span>{noiseLabel(venue.workInfo.noise_level) ?? 'Noise not listed'}</span>
-				</li>
-			</ul>
-			<p class="mt-3 text-sm leading-6 text-muted">
-				{venue.workFriendly
-					? 'Work friendly — WiFi, outlets, and laptop seating.'
-					: 'Not work friendly — not set up for a full work session.'}
-				{venue.workInfo.notes ?? ''}
-			</p>
-		</section>
+	<aside class="flex flex-col gap-8">
+		<div class="hidden lg:block">
+			{@render workSetup()}
+		</div>
 
 		{#if venue.workInfo.lighting?.length || venue.workInfo.lighting_notes}
 			<section>
@@ -406,3 +383,35 @@
 		</ul>
 	{/if}
 </section>
+
+{#snippet workSetup()}
+	<section>
+		<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Work setup</h3>
+		<ul class="mt-4 space-y-3 text-sm">
+			<li class="flex items-start gap-2">
+				<Wifi class="mt-0.5 size-4 text-muted" />
+				<span>{wifiLabel(venue.workInfo) ?? 'No WiFi listed'}</span>
+			</li>
+			<li class="flex items-start gap-2">
+				<Plug class="mt-0.5 size-4 text-muted" />
+				<span>
+					{#if outletRatingOf(venue.workInfo)}
+						{outletRatingLabel(outletRatingOf(venue.workInfo))} · {outletPoints(outletRatingOf(venue.workInfo))} / 3
+					{:else}
+						{outletLabel(venue.workInfo.outlet_access, venue.workInfo.outlets) ?? 'Outlets unknown'}
+					{/if}
+				</span>
+			</li>
+			<li class="flex items-start gap-2">
+				<Volume2 class="mt-0.5 size-4 text-muted" />
+				<span>{noiseLabel(venue.workInfo.noise_level) ?? 'Noise not listed'}</span>
+			</li>
+		</ul>
+		<p class="mt-3 text-sm leading-6 text-muted">
+			{venue.workFriendly
+				? 'Work friendly — WiFi, outlets, and laptop seating.'
+				: 'Not work friendly — not set up for a full work session.'}
+			{venue.workInfo.notes ?? ''}
+		</p>
+	</section>
+{/snippet}

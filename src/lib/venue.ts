@@ -189,7 +189,24 @@ export type MapPlace = {
 	special: string | null;
 	alert: boolean;
 	alertTitles: string[];
+	ratingAverage: number | null;
+	ratingCount: number;
 };
+
+export type RatingSummary = {
+	average: number | null;
+	count: number;
+};
+
+export function ratingStars(average: number | null): number {
+	if (average === null) return 0;
+	return Math.max(0, Math.min(5, Math.round(average)));
+}
+
+export function ratingLabel(average: number | null, count: number): string {
+	if (!count || average === null) return 'No ratings yet';
+	return `${average.toFixed(1)} · ${count} ${count === 1 ? 'rating' : 'ratings'}`;
+}
 
 export type MapFrame = {
 	north: number;

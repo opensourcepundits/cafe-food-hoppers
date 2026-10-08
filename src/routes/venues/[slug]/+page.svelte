@@ -9,8 +9,10 @@
 	import Plug from '@lucide/svelte/icons/plug';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import Wifi from '@lucide/svelte/icons/wifi';
+	import BusyOverlay from '$lib/components/BusyOverlay.svelte';
 	import StarRating from '$lib/components/StarRating.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import { enhance } from '$app/forms';
 	import MapEmbed from '$lib/components/MapEmbed.svelte';
 	import ImageCarousel from '$lib/components/ImageCarousel.svelte';
 	import MenuList from '$lib/components/MenuList.svelte';
@@ -39,6 +41,7 @@
 	} from '$lib/venue';
 
 	let { data, form } = $props();
+	let sendingRating = $state(false);
 	const venue = $derived(data.venue);
 	const justSaved = $derived(page.url.searchParams.get('saved') === '1');
 
@@ -354,7 +357,19 @@
 		<StarRating average={data.rating.average} count={data.rating.count} />
 	</div>
 	{#if data.user}
-		<form method="POST" action="?/rate" class="mt-4">
+		<BusyOverlay show={sendingRating} label="Sending rating…" />
+		<form
+			method="POST"
+			action="?/rate"
+			class="mt-4"
+			use:enhance={() => {
+				sendingRating = true;
+				return async ({ update }) => {
+					await update();
+					sendingRating = false;
+				};
+			}}
+		>
 			{#if form && 'ratingError' in form && form.ratingError}
 				<p class="mb-3 border border-accent px-3 py-2 text-sm text-accent">{form.ratingError}</p>
 			{/if}
@@ -371,9 +386,10 @@
 						type="submit"
 						name="stars"
 						value={star}
+						disabled={sendingRating}
 						aria-label="{star} {star === 1 ? 'star' : 'stars'}"
 						aria-pressed={data.myStars !== null && star <= data.myStars}
-						class="size-10 border text-lg leading-none {data.myStars !== null && star <= data.myStars
+						class="size-10 border text-lg leading-none disabled:opacity-60 {data.myStars !== null && star <= data.myStars
 							? 'border-accent bg-accent text-paper'
 							: 'border-line bg-paper text-muted hover:border-ink hover:text-ink'}"
 					>

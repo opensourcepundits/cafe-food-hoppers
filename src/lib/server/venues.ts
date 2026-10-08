@@ -412,7 +412,7 @@ function toMapPlace(venue: LiveVenue, pin: { lat: number; lng: number }, rating:
 		alert: venue.alerts.length > 0,
 		alertTitles: venue.alerts.map((item) => item.title.trim()).filter(Boolean),
 		isFeatured: venue.isFeatured,
-		featuredPriority: venue.featuredPriority
+		featuredPriority: venue.featuredPriority,
 		ratingAverage: rating.average,
 		ratingCount: rating.count
 	};

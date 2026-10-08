@@ -408,7 +408,9 @@ function toMapPlace(venue: LiveVenue, pin: { lat: number; lng: number }): MapPla
 		bits: bits.slice(0, 5),
 		special: venue.ongoingSpecials[0]?.title ?? venue.upcomingSpecials[0]?.title ?? null,
 		alert: venue.alerts.length > 0,
-		alertTitles: venue.alerts.map((item) => item.title.trim()).filter(Boolean)
+		alertTitles: venue.alerts.map((item) => item.title.trim()).filter(Boolean),
+		isFeatured: venue.isFeatured,
+		featuredPriority: venue.featuredPriority
 	};
 }
 

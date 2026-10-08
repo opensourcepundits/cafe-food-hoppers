@@ -34,11 +34,16 @@
 	}
 
 	function orderPlaces(places: MapPlace[], view: MapFrame | null): MapPlace[] {
-		if (!view) return places;
 		return [...places].sort((a, b) => {
-			const aIn = inside(a, view) ? 0 : 1;
-			const bIn = inside(b, view) ? 0 : 1;
-			if (aIn !== bIn) return aIn - bIn;
+			if (view) {
+				const aIn = inside(a, view) ? 0 : 1;
+				const bIn = inside(b, view) ? 0 : 1;
+				if (aIn !== bIn) return aIn - bIn;
+			}
+			const featured = Number(b.isFeatured) - Number(a.isFeatured);
+			if (featured !== 0) return featured;
+			if (a.featuredPriority !== b.featuredPriority) return b.featuredPriority - a.featuredPriority;
+			if (!view) return a.name.localeCompare(b.name);
 			return (
 				distanceMeters(view.lat, view.lng, a.lat, a.lng) -
 				distanceMeters(view.lat, view.lng, b.lat, b.lng)

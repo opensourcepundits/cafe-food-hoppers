@@ -189,6 +189,8 @@ export type MapPlace = {
 	special: string | null;
 	alert: boolean;
 	alertTitles: string[];
+	isFeatured: boolean;
+	featuredPriority: number;
 };
 
 export type MapFrame = {

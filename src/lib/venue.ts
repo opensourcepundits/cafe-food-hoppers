@@ -1,4 +1,14 @@
-export const DISTRICTS = ['Grand Baie', 'Ebène', 'Tamarin', 'Port Louis', 'Moka'] as const;
+export const DISTRICTS = [
+	'Flacq',
+	'Grand Port',
+	'Moka',
+	'Pamplemousses',
+	'Plaines Wilhems',
+	'Port Louis',
+	'Rivière du Rempart',
+	'Rivière Noire',
+	'Savanne'
+] as const;
 export type District = (typeof DISTRICTS)[number];
 
 export const MAURITIUS_TZ = 'Indian/Mauritius';

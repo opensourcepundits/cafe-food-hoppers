@@ -74,6 +74,12 @@
 	let name = $state(seed.name);
 	let slug = $state(seed.slug);
 	let district = $state(seed.district);
+	const districtOptions = $derived.by(() => {
+		const current = district.trim();
+		const known = (DISTRICTS as readonly string[]).includes(current);
+		const options = known || !current ? [...DISTRICTS] : [...DISTRICTS, current];
+		return options.sort((a, b) => a.localeCompare(b, 'fr'));
+	});
 	let googleMaps = $state(seed.googleMaps);
 	let isFeatured = $state(seed.isFeatured);
 	let featuredPriority = $state(seed.featuredPriority);
@@ -340,12 +346,11 @@
 				/>
 			</Field>
 			<Field label="District">
-				<input class={field} list="districts" bind:value={district} />
-				<datalist id="districts">
-					{#each DISTRICTS as item (item)}
-						<option value={item}></option>
+				<select class={field} bind:value={district}>
+					{#each districtOptions as item (item)}
+						<option value={item}>{item}</option>
 					{/each}
-				</datalist>
+				</select>
 			</Field>
 			<Field label="Featured priority">
 				<input class={field} type="number" bind:value={featuredPriority} />

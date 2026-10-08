@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './gumbo.css';
 
 @theme {
 	--font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
@@ -14,8 +15,15 @@
 }
 
 html {
+	--font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 	background: var(--color-paper);
 	color: var(--color-ink);
+}
+
+html[data-theme='casual'] {
+	--font-sans: Gumbo, ui-sans-serif, system-ui, sans-serif;
+	--font-mono: Gumbo, ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
@@ -25,6 +33,10 @@ body {
 	background: var(--color-paper);
 	color: var(--color-ink);
 	-webkit-font-smoothing: antialiased;
+}
+
+html[data-theme='casual'] body {
+	font-family: Gumbo, ui-sans-serif, system-ui, sans-serif;
 }
 
 ::selection {

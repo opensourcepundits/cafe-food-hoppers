@@ -1,5 +1,6 @@
 import { and, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
+import { ratingSummaries } from '$lib/server/ratings';
 import { venues, type VenueRow } from '$lib/server/db/schema';
 import type { AuthUser } from '$lib/server/auth';
 import type { VenueWrite } from '$lib/server/venue-input';
@@ -32,6 +33,7 @@ import {
 	wifiLabel,
 	type AlertFeedItem,
 	type MapPlace,
+	type RatingSummary,
 	type SpecialFeedItem,
 	type Venue,
 	type VenueImage,
@@ -380,7 +382,7 @@ export function placePin(venue: Pick<Venue, 'lat' | 'lng' | 'contact'>): { lat: 
 	return null;
 }
 
-function toMapPlace(venue: LiveVenue, pin: { lat: number; lng: number }): MapPlace {
+function toMapPlace(venue: LiveVenue, pin: { lat: number; lng: number }, rating: RatingSummary): MapPlace {
 	const bits = [
 		venue.workFriendly ? 'Work friendly' : null,
 		wifiLabel(venue.workInfo),
@@ -411,6 +413,8 @@ function toMapPlace(venue: LiveVenue, pin: { lat: number; lng: number }): MapPla
 		alertTitles: venue.alerts.map((item) => item.title.trim()).filter(Boolean),
 		isFeatured: venue.isFeatured,
 		featuredPriority: venue.featuredPriority
+		ratingAverage: rating.average,
+		ratingCount: rating.count
 	};
 }
 
@@ -418,6 +422,7 @@ export async function listMapPlaces(
 	filters: VenueFilters
 ): Promise<{ places: MapPlace[]; missing: number }> {
 	const matched = await listVenues(filters);
+	const summaries = await ratingSummaries(matched.map((venue) => venue.id));
 	const places: MapPlace[] = [];
 	let missing = 0;
 
@@ -427,7 +432,7 @@ export async function listMapPlaces(
 			missing += 1;
 			continue;
 		}
-		places.push(toMapPlace(venue, pin));
+		places.push(toMapPlace(venue, pin, summaries.get(venue.id) ?? { average: null, count: 0 }));
 	}
 
 	return { places, missing };

@@ -1,10 +1,22 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import PushToggle from '$lib/components/PushToggle.svelte';
+	import { readSiteTheme, saveSiteTheme, type SiteTheme } from '$lib/theme';
 	import { formatMauritiusWhen } from '$lib/venue';
 
 	let { data, form } = $props();
 	let passwordOpen = $state(false);
+	let theme = $state<SiteTheme>('professional');
 	const field = 'w-full border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink';
+
+	onMount(() => {
+		theme = readSiteTheme();
+	});
+
+	function chooseTheme(next: SiteTheme) {
+		theme = next;
+		saveSiteTheme(next);
+	}
 </script>
 
 <svelte:head>
@@ -64,6 +76,31 @@
 		<button type="submit" class="border border-ink bg-ink px-4 py-2 text-sm text-paper">Save password</button>
 	</form>
 {/if}
+
+<section class="mb-10">
+	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Theme</h3>
+	<p class="mt-3 max-w-lg text-sm leading-6 text-muted">
+		Professional uses IBM Plex. Casual uses Gumbo.
+	</p>
+	<div class="mt-3 inline-flex border border-line" role="group" aria-label="Theme">
+		<button
+			type="button"
+			class="px-4 py-2 text-sm {theme === 'professional' ? 'bg-ink text-paper' : 'text-muted hover:text-ink'}"
+			aria-pressed={theme === 'professional'}
+			onclick={() => chooseTheme('professional')}
+		>
+			Professional
+		</button>
+		<button
+			type="button"
+			class="border-l border-line px-4 py-2 text-sm {theme === 'casual' ? 'bg-ink text-paper' : 'text-muted hover:text-ink'}"
+			aria-pressed={theme === 'casual'}
+			onclick={() => chooseTheme('casual')}
+		>
+			Casual
+		</button>
+	</div>
+</section>
 
 <section class="mb-10">
 	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Notifications</h3>

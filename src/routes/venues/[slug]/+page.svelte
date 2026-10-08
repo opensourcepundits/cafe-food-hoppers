@@ -9,7 +9,10 @@
 	import Plug from '@lucide/svelte/icons/plug';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import Wifi from '@lucide/svelte/icons/wifi';
+	import BusyOverlay from '$lib/components/BusyOverlay.svelte';
+	import StarRating from '$lib/components/StarRating.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import { enhance } from '$app/forms';
 	import MapEmbed from '$lib/components/MapEmbed.svelte';
 	import ImageCarousel from '$lib/components/ImageCarousel.svelte';
 	import MenuList from '$lib/components/MenuList.svelte';
@@ -38,6 +41,7 @@
 	} from '$lib/venue';
 
 	let { data, form } = $props();
+	let sendingRating = $state(false);
 	const venue = $derived(data.venue);
 	const justSaved = $derived(page.url.searchParams.get('saved') === '1');
 
@@ -96,6 +100,9 @@
 					Save
 				</a>
 			{/if}
+		</div>
+		<div class="mt-3">
+			<StarRating average={data.rating.average} count={data.rating.count} />
 		</div>
 		{#if amenityLabels(venue.workInfo).length || verificationLabels(venue).length}
 			<ul class="mt-3 flex flex-wrap gap-1.5">
@@ -344,11 +351,68 @@
 	</aside>
 </div>
 
+<section id="rating" class="mt-12 border-t border-line pt-8">
+	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Rating</h3>
+	<div class="mt-4">
+		<StarRating average={data.rating.average} count={data.rating.count} />
+	</div>
+	{#if data.user}
+		<BusyOverlay show={sendingRating} label="Sending rating…" />
+		<form
+			method="POST"
+			action="?/rate"
+			class="mt-4"
+			use:enhance={() => {
+				sendingRating = true;
+				return async ({ update }) => {
+					await update();
+					sendingRating = false;
+				};
+			}}
+		>
+			{#if form && 'ratingError' in form && form.ratingError}
+				<p class="mb-3 border border-accent px-3 py-2 text-sm text-accent">{form.ratingError}</p>
+			{/if}
+			<p class="text-sm text-muted">
+				{#if data.myStars}
+					You gave this place {data.myStars} {data.myStars === 1 ? 'star' : 'stars'}. Tap again to change it.
+				{:else}
+					How many stars does this place deserve?
+				{/if}
+			</p>
+			<div class="mt-3 flex gap-1">
+				{#each [1, 2, 3, 4, 5] as star (star)}
+					<button
+						type="submit"
+						name="stars"
+						value={star}
+						disabled={sendingRating}
+						aria-label="{star} {star === 1 ? 'star' : 'stars'}"
+						aria-pressed={data.myStars !== null && star <= data.myStars}
+						class="size-10 border text-lg leading-none disabled:opacity-60 {data.myStars !== null && star <= data.myStars
+							? 'border-accent bg-accent text-paper'
+							: 'border-line bg-paper text-muted hover:border-ink hover:text-ink'}"
+					>
+						★
+					</button>
+				{/each}
+			</div>
+		</form>
+	{:else}
+		<p class="mt-4 text-sm text-muted">
+			<a href="/login?next=/venues/{venue.slug}%23rating" class="underline decoration-line underline-offset-4 hover:text-ink">
+				Sign in
+			</a>
+			to rate this place.
+		</p>
+	{/if}
+</section>
+
 <section id="comments" class="mt-12 border-t border-line pt-8">
 	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Comments</h3>
 	{#if data.user}
 		<form method="POST" action="?/comment" class="mt-4 max-w-xl">
-			{#if form?.error}
+			{#if form && 'error' in form && form.error}
 				<p class="mb-3 border border-accent px-3 py-2 text-sm text-accent">{form.error}</p>
 			{/if}
 			<label class="block">

@@ -1,6 +1,7 @@
 import { error, fail, isHttpError, redirect } from '@sveltejs/kit';
 import { addComment, listComments } from '$lib/server/comments';
 import { isFavourite, toggleFavourite } from '$lib/server/favourites';
+import { ratingSummary, setRating, userStars } from '$lib/server/ratings';
 import { getVenueBySlug } from '$lib/server/venues';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -8,11 +9,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	try {
 		const venue = await getVenueBySlug(params.slug);
 		if (!venue) error(404, 'That venue is not in the index.');
-		const [comments, favourite] = await Promise.all([
+		const [comments, favourite, rating, myStars] = await Promise.all([
 			listComments(venue.id),
-			locals.user ? isFavourite(locals.user.id, venue.id) : Promise.resolve(false)
+			locals.user ? isFavourite(locals.user.id, venue.id) : Promise.resolve(false),
+			ratingSummary(venue.id),
+			locals.user ? userStars(locals.user.id, venue.id) : Promise.resolve(null)
 		]);
-		return { venue, comments, favourite };
+		return { venue, comments, favourite, rating, myStars };
 	} catch (cause) {
 		if (isHttpError(cause)) throw cause;
 		console.error(cause);
@@ -40,6 +43,19 @@ export const actions: Actions = {
 		const venue = await getVenueBySlug(params.slug);
 		if (!venue) error(404, 'That venue is not in the index.');
 		await addComment(venue.id, locals.user.id, body);
+		redirect(303, next);
+	},
+	rate: async ({ request, locals, params }) => {
+		const next = `/venues/${params.slug}#rating`;
+		if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(next)}`);
+		const data = await request.formData();
+		const stars = Number(data.get('stars'));
+		if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
+			return fail(400, { ratingError: 'Choose between 1 and 5 stars.' });
+		}
+		const venue = await getVenueBySlug(params.slug);
+		if (!venue) error(404, 'That venue is not in the index.');
+		await setRating(venue.id, locals.user.id, stars);
 		redirect(303, next);
 	}
 };

@@ -30,6 +30,17 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 CREATE INDEX IF NOT EXISTS idx_comments_venue ON comments (venue_id, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS ratings (
+	id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	venue_id uuid NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+	user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	stars integer NOT NULL CHECK (stars BETWEEN 1 AND 5),
+	created_at timestamptz NOT NULL DEFAULT now(),
+	updated_at timestamptz NOT NULL DEFAULT now(),
+	UNIQUE (venue_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ratings_venue ON ratings (venue_id);
+
 -- Web Push (0009)
 CREATE TABLE IF NOT EXISTS push_subscriptions (
 	id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -100,7 +111,7 @@ DO $$
 DECLARE
 	t text;
 BEGIN
-	FOREACH t IN ARRAY ARRAY['user_venues', 'favourites', 'comments', 'push_subscriptions', 'push_deliveries', 'franchises']
+	FOREACH t IN ARRAY ARRAY['user_venues', 'favourites', 'comments', 'ratings', 'push_subscriptions', 'push_deliveries', 'franchises']
 	LOOP
 		EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
 		BEGIN

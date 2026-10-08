@@ -182,6 +182,26 @@ export const comments = pgTable(
 	(table) => [index('idx_comments_venue').on(table.venueId, table.createdAt)]
 );
 
+export const ratings = pgTable(
+	'ratings',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		venueId: uuid('venue_id')
+			.notNull()
+			.references(() => venues.id, { onDelete: 'cascade' }),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		stars: integer('stars').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [
+		uniqueIndex('ratings_venue_user').on(table.venueId, table.userId),
+		index('idx_ratings_venue').on(table.venueId)
+	]
+);
+
 export const sessions = pgTable(
 	'sessions',
 	{

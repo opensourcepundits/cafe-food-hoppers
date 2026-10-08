@@ -28,3 +28,11 @@ vite.config.ts.timestamp-*
 
 # Scratch
 ai_studio_code.txt
+
+# Archives and font files
+*.zip
+*.woff
+*.woff2
+*.ttf
+*.otf
+*.eot

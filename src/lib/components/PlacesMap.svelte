@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import type { Circle, Map as LeafletMap, Marker } from 'leaflet';
-	import type { MapFrame, MapPlace } from '$lib/venue';
+	import StarRating from '$lib/components/StarRating.svelte';
+	import { ratingLabel, ratingStars, type MapFrame, type MapPlace } from '$lib/venue';
 
 	let {
 		places,
@@ -68,7 +69,7 @@
 		status.textContent = place.open ? 'Open' : 'Closed';
 		head.append(name, status);
 
-		card.append(line('pin-card-kicker', place.district), head);
+		card.append(line('pin-card-kicker', place.district), head, ratingLine(place));
 		for (const title of place.alertTitles) card.append(line('pin-card-alert', title));
 		card.append(line('pin-card-meta', [place.hours, place.wifi ?? 'No WiFi'].join(' · ')));
 
@@ -92,6 +93,23 @@
 		more.textContent = 'More info';
 		card.append(more);
 		return card;
+	}
+
+	function ratingLine(place: MapPlace): HTMLElement {
+		const row = document.createElement('p');
+		row.className = 'pin-card-rating';
+		const stars = document.createElement('span');
+		stars.className = 'pin-card-stars';
+		stars.setAttribute('aria-hidden', 'true');
+		const filled = ratingStars(place.ratingAverage);
+		for (let star = 1; star <= 5; star += 1) {
+			const mark = document.createElement('span');
+			mark.className = star <= filled ? 'pin-star-on' : 'pin-star-off';
+			mark.textContent = '★';
+			stars.append(mark);
+		}
+		row.append(stars, document.createTextNode(ratingLabel(place.ratingAverage, place.ratingCount)));
+		return row;
 	}
 
 	function sync(list: MapPlace[]) {
@@ -352,6 +370,9 @@
 			{#each selected.alertTitles as title, index (`${selected.id}-alert-${index}`)}
 				<p class="mt-2 text-sm font-medium leading-5 text-accent">{title}</p>
 			{/each}
+			<div class="mt-2">
+				<StarRating average={selected.ratingAverage} count={selected.ratingCount} />
+			</div>
 			<p class="mt-1.5 text-xs leading-5 text-muted">
 				{selected.hours} · {selected.wifi ?? 'No WiFi'}
 			</p>
@@ -512,6 +533,29 @@
 	:global(.pin-status-open) {
 		border-color: var(--color-open);
 		color: var(--color-open);
+	}
+
+	:global(.pin-card-rating) {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+		margin-top: 6px;
+		font-size: 12px;
+		line-height: 1.4;
+		color: var(--color-muted);
+	}
+
+	:global(.pin-card-stars) {
+		letter-spacing: 0.08em;
+	}
+
+	:global(.pin-star-on) {
+		color: var(--color-accent);
+	}
+
+	:global(.pin-star-off) {
+		color: var(--color-line);
 	}
 
 	:global(.pin-card-meta) {

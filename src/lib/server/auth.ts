@@ -77,7 +77,7 @@ type AuthRow = {
 	id: string;
 	email: string;
 	phone: string | null;
-	passwordHash: string;
+	passwordHash: string | null;
 	role: string | null;
 	canCreate: boolean | null;
 	canEdit: boolean | null;
@@ -317,7 +317,10 @@ export async function changePassword(
 		.from(users)
 		.where(eq(users.id, userId))
 		.limit(1);
-	if (!row || !(await verifyPassword(current, row.passwordHash))) {
+	if (!row?.passwordHash) {
+		return { ok: false, error: 'This account signs in with Google. There is no password to change.' };
+	}
+	if (!(await verifyPassword(current, row.passwordHash))) {
 		return { ok: false, error: 'Current password is wrong.' };
 	}
 	await db
@@ -345,7 +348,11 @@ export async function loginUser(
 						.limit(1)
 				)[0];
 
-		if (!row || !(await verifyPassword(password, row.passwordHash))) {
+		if (!row?.passwordHash) {
+			if (row) return { ok: false, error: 'This account signs in with Google.' };
+			return { ok: false, error: 'Wrong email/phone or password.' };
+		}
+		if (!(await verifyPassword(password, row.passwordHash))) {
 			return { ok: false, error: 'Wrong email/phone or password.' };
 		}
 
@@ -355,6 +362,91 @@ export async function loginUser(
 		if (error && typeof error === 'object' && 'cause' in error) console.error((error as { cause: unknown }).cause);
 		return { ok: false, error: 'Could not sign in. Try again in a moment.' };
 	}
+}
+
+export async function userHasPassword(userId: string): Promise<boolean> {
+	const [row] = await db
+		.select({ passwordHash: users.passwordHash })
+		.from(users)
+		.where(eq(users.id, userId))
+		.limit(1);
+	return Boolean(row?.passwordHash);
+}
+
+/** Find the Google account, or create one. An existing email is linked on first use. */
+export async function loginWithGoogle(profile: {
+	sub: string;
+	email: string;
+	emailVerified: boolean;
+	firstName: string | null;
+}): Promise<{ ok: true; user: AuthUser } | { ok: false; code: 'unverified' | 'taken' | 'failed' }> {
+	if (!profile.emailVerified) return { ok: false, code: 'unverified' };
+	const sub = profile.sub.trim();
+	const email = normalizeEmail(profile.email);
+	if (!sub || sub.length > 255 || !isEmail(email)) return { ok: false, code: 'failed' };
+
+	try {
+		const existing = await findGoogleUser(sub, email);
+		if (existing === 'taken') return { ok: false, code: 'taken' };
+		if (existing) return { ok: true, user: toAuthUser(existing) };
+
+		const firstName = cleanFirstName(profile.firstName);
+		const [row] = await db
+			.insert(users)
+			.values({
+				email,
+				phone: null,
+				passwordHash: null,
+				firstName,
+				role: 'user',
+				canCreate: false,
+				canEdit: false,
+				emails: [],
+				googleSub: sub
+			})
+			.returning(authColumns);
+		if (!row) return { ok: false, code: 'failed' };
+		return { ok: true, user: toAuthUser(row) };
+	} catch (error) {
+		if (isUniqueViolation(error)) {
+			const existing = await findGoogleUser(sub, email).catch(() => undefined);
+			if (existing && existing !== 'taken') return { ok: true, user: toAuthUser(existing) };
+			if (existing === 'taken') return { ok: false, code: 'taken' };
+		}
+		console.error(error);
+		if (error && typeof error === 'object' && 'cause' in error) console.error((error as { cause: unknown }).cause);
+		return { ok: false, code: 'failed' };
+	}
+}
+
+async function findGoogleUser(sub: string, email: string): Promise<AuthRow | 'taken' | undefined> {
+	const [bySub] = await db.select(authColumns).from(users).where(eq(users.googleSub, sub)).limit(1);
+	if (bySub) return bySub;
+
+	const byEmail = await findUserByEmail(email);
+	if (!byEmail) return undefined;
+
+	const [linked] = await db
+		.select({ googleSub: users.googleSub })
+		.from(users)
+		.where(eq(users.id, byEmail.id))
+		.limit(1);
+	if (linked?.googleSub && linked.googleSub !== sub) return 'taken';
+	if (!linked?.googleSub) {
+		await db.update(users).set({ googleSub: sub, updatedAt: new Date() }).where(eq(users.id, byEmail.id));
+	}
+	return byEmail;
+}
+
+function cleanFirstName(value: string | null): string | null {
+	const name = value?.trim().replace(/\s+/g, ' ') ?? '';
+	if (!name) return null;
+	return name.slice(0, 40);
+}
+
+function isUniqueViolation(error: unknown): boolean {
+	const cause = error && typeof error === 'object' && 'cause' in error ? (error as { cause: unknown }).cause : error;
+	return Boolean(cause && typeof cause === 'object' && 'code' in cause && (cause as { code: unknown }).code === '23505');
 }
 
 export async function createSession(userId: string, cookies: Cookies): Promise<void> {

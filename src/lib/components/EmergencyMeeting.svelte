@@ -23,16 +23,16 @@
 		navigator.geolocation.getCurrentPosition(
 			(position) => {
 				const params = new URLSearchParams({
-					zoom: '1',
+					meet: '5',
 					lat: String(position.coords.latitude),
 					lng: String(position.coords.longitude)
 				});
 				locating = false;
-				goto(`/?${params}`);
+				goto(`/map?${params}`);
 			},
 			() => {
 				locating = false;
-				locateError = 'Allow location access to find a place within a 5-minute walk.';
+				locateError = 'Allow location access to open the map around you.';
 			},
 			{ enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
 		);
@@ -56,7 +56,7 @@
 <Dialog
 	open={confirmOpen}
 	title="Emergency meeting"
-	body="Do you have an emergency meeting? This finds the quietest open place within a 5-minute walk with solid Wi-Fi."
+	body="Do you have an emergency meeting? This opens the map and marks every place within a 5-minute walk. You can widen that to 10 or 15 minutes."
 	confirmLabel="Find a place"
 	danger
 	busy={locating}

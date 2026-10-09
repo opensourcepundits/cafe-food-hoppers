@@ -36,8 +36,25 @@ export const LIGHTING_TYPES: LightingType[] = ['natural', 'warm', 'bright', 'dim
 export const OUTLET_RATINGS: OutletRating[] = ['scarce', 'moderate', 'abundant'];
 export const ERGONOMIC_LEVELS: ErgonomicIndex[] = ['low', 'moderate', 'high'];
 
+/** Typical walking pace used for emergency-meeting radii. */
+export const WALK_METERS_PER_MINUTE = 80;
+
+export const MEET_WALK_MINUTES = [5, 10, 15] as const;
+export type MeetWalkMinutes = (typeof MEET_WALK_MINUTES)[number];
+
+export function meetWalkMeters(minutes: number): number {
+	return minutes * WALK_METERS_PER_MINUTE;
+}
+
+export function parseMeetMinutes(value: string | null): MeetWalkMinutes | null {
+	const minutes = Number(value);
+	return (MEET_WALK_MINUTES as readonly number[]).includes(minutes)
+		? (minutes as MeetWalkMinutes)
+		: null;
+}
+
 /** 5 minutes at a typical walking pace. */
-export const ZOOM_WALK_METERS = 400;
+export const ZOOM_WALK_METERS = meetWalkMeters(5);
 
 export type WorkInfo = {
 	wifi?: boolean;
@@ -261,6 +278,7 @@ export type VenueFilters = {
 	zoom: boolean;
 	lat: number | null;
 	lng: number | null;
+	meetMinutes: MeetWalkMinutes | null;
 };
 
 const WEEKDAY_LABEL: Record<Weekday, string> = {
@@ -609,7 +627,7 @@ export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: n
 }
 
 export function walkMinutes(meters: number): number {
-	return Math.max(1, Math.round(meters / 80));
+	return Math.max(1, Math.round(meters / WALK_METERS_PER_MINUTE));
 }
 
 export function formatMauritiusWhen(value: Date | string | null | undefined): string | null {

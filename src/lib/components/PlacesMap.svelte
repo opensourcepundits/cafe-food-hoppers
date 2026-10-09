@@ -2,18 +2,29 @@
 	import { onMount, tick } from 'svelte';
 	import type { Circle, Map as LeafletMap, Marker } from 'leaflet';
 	import StarRating from '$lib/components/StarRating.svelte';
-	import { ratingLabel, ratingStars, type MapFrame, type MapPlace } from '$lib/venue';
+	import {
+		MEET_WALK_MINUTES,
+		ratingLabel,
+		ratingStars,
+		type MapFrame,
+		type MapPlace,
+		type MeetWalkMinutes
+	} from '$lib/venue';
 
 	let {
 		places,
 		selected = null,
+		meet = null,
 		onview,
-		onselect
+		onselect,
+		onmeet
 	}: {
 		places: MapPlace[];
 		selected?: MapPlace | null;
+		meet?: { lat: number; lng: number; meters: number; minutes: MeetWalkMinutes; ids: string[] } | null;
 		onview?: (frame: MapFrame) => void;
 		onselect?: (place: MapPlace | null) => void;
+		onmeet?: (minutes: MeetWalkMinutes) => void;
 	} = $props();
 
 	let root: HTMLDivElement | undefined = $state();
@@ -22,6 +33,8 @@
 	let leaflet: typeof import('leaflet') | undefined;
 	let hereMarker: Marker | undefined;
 	let hereCircle: Circle | undefined;
+	let meetCircle: Circle | undefined;
+	let radiusKey = '';
 	let locateError = $state('');
 	let fullscreen = $state(false);
 	let reportView: ((frame: MapFrame) => void) | undefined;
@@ -33,13 +46,18 @@
 		reportSelect = onselect;
 	});
 
-	function pinIcon(place: MapPlace) {
+	function pinIcon(place: MapPlace, rangeIds: ReadonlySet<string> | null) {
 		const tone = place.open ? 'pin-dot-open' : 'pin-dot-closed';
-		const pulse = place.alert
-			? ' pin-pulse-alert'
-			: place.specialPulse
-				? ` pin-pulse-${place.specialPulse}`
-				: '';
+		const inRange = rangeIds?.has(place.id) ?? false;
+		const pulse = inRange
+			? ' pin-pulse-meet'
+			: rangeIds
+				? ' pin-muted'
+				: place.alert
+					? ' pin-pulse-alert'
+					: place.specialPulse
+						? ` pin-pulse-${place.specialPulse}`
+						: '';
 		return leaflet?.divIcon({
 			className: `pin-icon${pulse}`,
 			html: `<span class="pin-ring"></span><span class="pin-ring pin-ring-late"></span><span class="pin-dot ${tone}"></span>`,
@@ -112,7 +130,7 @@
 		return row;
 	}
 
-	function sync(list: MapPlace[]) {
+	function sync(list: MapPlace[], rangeIds: ReadonlySet<string> | null) {
 		if (!map || !leaflet) return;
 		const nextIds = new Set(list.map((place) => place.id));
 
@@ -123,17 +141,24 @@
 		}
 
 		for (const place of list) {
-			const icon = pinIcon(place);
+			const icon = pinIcon(place, rangeIds);
 			if (!icon) continue;
+			const highlighted = rangeIds?.has(place.id) ?? false;
 			const existing = markers.get(place.id);
 			if (existing) {
 				existing.setLatLng([place.lat, place.lng]);
 				existing.setIcon(icon);
+				existing.setZIndexOffset(highlighted ? 700 : 0);
 				existing.setPopupContent(popup(place));
 				continue;
 			}
 			const marker = leaflet
-				.marker([place.lat, place.lng], { icon, title: place.name, keyboard: true })
+				.marker([place.lat, place.lng], {
+					icon,
+					title: place.name,
+					keyboard: true,
+					zIndexOffset: highlighted ? 700 : 0
+				})
 				.addTo(map)
 				.bindPopup(popup(place), {
 					minWidth: 220,
@@ -146,6 +171,11 @@
 					reportSelect?.(place);
 				});
 			markers.set(place.id, marker);
+		}
+
+		if (rangeIds) {
+			fittedKey = '';
+			return;
 		}
 
 		const key = list.map((place) => place.id).join('\0');
@@ -161,10 +191,49 @@
 		}
 	}
 
+	function applyRadius(area: { lat: number; lng: number; meters: number } | null) {
+		if (!map || !leaflet) return;
+		if (!area) {
+			meetCircle?.remove();
+			meetCircle = undefined;
+			radiusKey = '';
+			return;
+		}
+
+		const latlng = { lat: area.lat, lng: area.lng };
+		if (meetCircle) {
+			meetCircle.setLatLng(latlng);
+			meetCircle.setRadius(area.meters);
+		} else {
+			meetCircle = leaflet
+				.circle(latlng, {
+					radius: area.meters,
+					color: '#b4532a',
+					weight: 2,
+					dashArray: '7 7',
+					fillColor: '#b4532a',
+					fillOpacity: 0.12,
+					interactive: false,
+					className: 'meet-radius'
+				})
+				.addTo(map);
+		}
+		meetCircle.bringToBack();
+		showHere(latlng, 0);
+
+		const key = `${area.lat.toFixed(5)}:${area.lng.toFixed(5)}:${area.meters}`;
+		if (key === radiusKey) return;
+		radiusKey = key;
+		map.fitBounds(meetCircle.getBounds(), { padding: [48, 48], maxZoom: 16 });
+	}
+
 	$effect(() => {
 		const list = places;
+		const area = meet;
 		if (!map) return;
-		sync(list);
+		const rangeIds = area ? new Set(area.ids) : null;
+		sync(list, rangeIds);
+		applyRadius(area ? { lat: area.lat, lng: area.lng, meters: area.meters } : null);
 	});
 
 	function showHere(latlng: { lat: number; lng: number }, accuracy: number) {
@@ -304,6 +373,7 @@
 				markers.clear();
 				hereMarker = undefined;
 				hereCircle = undefined;
+				meetCircle = undefined;
 				next.remove();
 				map = undefined;
 			};
@@ -317,11 +387,31 @@
 
 </script>
 
-<div class="relative {fullscreen ? 'fixed inset-0 z-30 bg-paper' : ''}">
+<div class="relative {fullscreen ? 'fixed inset-0 z-30 bg-paper' : ''} {meet ? 'meet-active' : ''}">
 	<div
 		bind:this={root}
 		class="w-full bg-paper-2 {fullscreen ? 'h-full' : 'h-[min(70vh,640px)] border border-line'}"
 	></div>
+	{#if meet}
+		<div
+			class="absolute top-3 left-3 z-30 flex gap-1"
+			role="group"
+			aria-label="Walk radius"
+		>
+			{#each MEET_WALK_MINUTES as minutes (minutes)}
+				<button
+					type="button"
+					class="border px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)] {meet.minutes === minutes
+						? 'border-ink bg-ink text-paper'
+						: 'border-ink bg-paper'}"
+					aria-pressed={meet.minutes === minutes}
+					onclick={() => onmeet?.(minutes)}
+				>
+					{minutes} min
+				</button>
+			{/each}
+		</div>
+	{/if}
 	<button
 		type="button"
 		class="absolute top-3 right-3 z-30 border border-ink bg-paper px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)]"
@@ -440,7 +530,8 @@
 	:global(.pin-pulse-ongoing .pin-ring),
 	:global(.pin-pulse-ending .pin-ring),
 	:global(.pin-pulse-upcoming .pin-ring),
-	:global(.pin-pulse-alert .pin-ring) {
+	:global(.pin-pulse-alert .pin-ring),
+	:global(.pin-pulse-meet .pin-ring) {
 		display: block;
 		position: absolute;
 		top: 50%;
@@ -484,8 +575,28 @@
 		animation: pin-pulse-ongoing 1.6s ease-out infinite;
 	}
 
+	:global(.pin-pulse-meet .pin-ring) {
+		border: 4px solid #b4532a;
+		animation: pin-pulse-meet 1.05s ease-out infinite;
+	}
+
+	:global(.pin-pulse-meet .pin-dot) {
+		box-shadow:
+			0 0 0 3px #b4532a,
+			0 0 0 7px rgba(180, 83, 42, 0.35),
+			0 2px 8px rgba(0, 0, 0, 0.45);
+	}
+
+	:global(.pin-muted) {
+		opacity: 0.38;
+	}
+
 	:global(.pin-pulse-alert .pin-ring-late) {
 		animation-delay: 0.8s;
+	}
+
+	:global(.pin-pulse-meet .pin-ring-late) {
+		animation-delay: 0.5s;
 	}
 
 	:global(.pin-card-kicker) {
@@ -619,6 +730,10 @@
 		color: var(--color-muted);
 	}
 
+	:global(.meet-active .leaflet-top.leaflet-left) {
+		top: 3.25rem;
+	}
+
 	:global(.leaflet-bottom.leaflet-right) {
 		margin-bottom: 2.5rem;
 	}
@@ -629,6 +744,17 @@
 	}
 
 	:global {
+		@keyframes pin-pulse-meet {
+			0% {
+				transform: scale(0.7);
+				opacity: 1;
+			}
+			100% {
+				transform: scale(3);
+				opacity: 0;
+			}
+		}
+
 		@keyframes pin-pulse-ongoing {
 			0% {
 				transform: scale(0.7);

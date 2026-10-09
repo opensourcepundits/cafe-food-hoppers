@@ -1,12 +1,22 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { createSession, loginUser } from '$lib/server/auth';
+import { safeNext } from '$lib/server/google';
 import type { Actions, PageServerLoad } from './$types';
+
+const googleErrors: Record<string, string> = {
+	google_config: 'Google sign-in is not set up on this server yet.',
+	google_denied: 'Google sign-in was cancelled.',
+	google_failed: 'Google sign-in did not complete. Try again.',
+	google_unverified: 'That Google account has no verified email.',
+	google_taken: 'That email is already linked to a different Google account.'
+};
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.admin) {
 		redirect(303, safeNext(url.searchParams.get('next')));
 	}
-	return {};
+	const code = url.searchParams.get('error');
+	return { error: code ? (googleErrors[code] ?? null) : null };
 };
 
 export const actions: Actions = {
@@ -20,10 +30,3 @@ export const actions: Actions = {
 		redirect(303, safeNext(url.searchParams.get('next')));
 	}
 };
-
-function safeNext(value: string | null): string {
-	if (value && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/login')) {
-		return value;
-	}
-	return '/';
-}

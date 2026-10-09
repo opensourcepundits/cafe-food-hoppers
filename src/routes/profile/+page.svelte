@@ -38,13 +38,17 @@
 				Alerts
 			</a>
 		{/if}
-		<button
-			type="button"
-			class="border border-ink px-4 py-2 text-sm"
-			onclick={() => (passwordOpen = !passwordOpen)}
-		>
-			Change password
-		</button>
+		{#if data.hasPassword}
+			<button
+				type="button"
+				class="border border-ink px-4 py-2 text-sm"
+				onclick={() => (passwordOpen = !passwordOpen)}
+			>
+				Change password
+			</button>
+		{:else}
+			<p class="border border-line px-4 py-2 text-sm text-muted">Signed in with Google</p>
+		{/if}
 		<form method="POST" action="/admin?/logout">
 			<button type="submit" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
 				Sign out
@@ -53,7 +57,7 @@
 	</div>
 </section>
 
-{#if passwordOpen}
+{#if data.hasPassword && passwordOpen}
 	<form method="POST" action="?/password" class="mb-10 max-w-md space-y-4 border border-line p-4">
 		{#if form?.error}
 			<p class="border border-accent px-3 py-2 text-sm text-accent">{form.error}</p>
@@ -79,9 +83,6 @@
 
 <section class="mb-10">
 	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Theme</h3>
-	<p class="mt-3 max-w-lg text-sm leading-6 text-muted">
-		Professional uses IBM Plex. Casual uses Gumbo.
-	</p>
 	<div class="mt-3 inline-flex border border-line" role="group" aria-label="Theme">
 		<button
 			type="button"

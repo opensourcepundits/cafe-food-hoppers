@@ -201,6 +201,11 @@
 		}
 
 		const latlng = { lat: area.lat, lng: area.lng };
+		const bounds = leaflet.latLng(latlng.lat, latlng.lng).toBounds(area.meters);
+		if (map.getZoom() === undefined) {
+			map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16, animate: false });
+		}
+
 		if (meetCircle) {
 			meetCircle.setLatLng(latlng);
 			meetCircle.setRadius(area.meters);
@@ -224,16 +229,22 @@
 		const key = `${area.lat.toFixed(5)}:${area.lng.toFixed(5)}:${area.meters}`;
 		if (key === radiusKey) return;
 		radiusKey = key;
-		map.fitBounds(meetCircle.getBounds(), { padding: [48, 48], maxZoom: 16 });
+		const fit = () => {
+			if (!map) return;
+			map.invalidateSize();
+			map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16, animate: false });
+		};
+		fit();
+		void tick().then(() => requestAnimationFrame(fit));
 	}
 
 	$effect(() => {
 		const list = places;
 		const area = meet;
 		if (!map) return;
+		applyRadius(area ? { lat: area.lat, lng: area.lng, meters: area.meters } : null);
 		const rangeIds = area ? new Set(area.ids) : null;
 		sync(list, rangeIds);
-		applyRadius(area ? { lat: area.lat, lng: area.lng, meters: area.meters } : null);
 	});
 
 	function showHere(latlng: { lat: number; lng: number }, accuracy: number) {
@@ -365,6 +376,9 @@
 			});
 
 			map = next;
+			void tick().then(() => {
+				if (!cancelled) next.invalidateSize();
+			});
 			next.locate({ watch: true, setView: false, enableHighAccuracy: true, maximumAge: 15000 });
 			publish();
 			remove = () => {
@@ -390,11 +404,11 @@
 <div class="relative isolate {fullscreen ? 'fixed inset-0 z-30 bg-paper' : 'z-0'}">
 	<div
 		bind:this={root}
-		class="w-full bg-paper-2 {fullscreen ? 'h-full' : 'h-[min(70vh,640px)] border border-line'}"
+		class="relative z-0 w-full bg-paper-2 {fullscreen ? 'h-full' : 'h-[min(70vh,640px)] border border-line'}"
 	></div>
 	{#if meet}
 		<div
-			class="absolute top-3 left-3 z-30 flex gap-1"
+			class="absolute top-3 left-3 z-20 flex gap-1"
 			role="group"
 			aria-label="Walk radius"
 		>

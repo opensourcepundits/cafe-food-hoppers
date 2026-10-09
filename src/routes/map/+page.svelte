@@ -4,6 +4,7 @@
 	import PlacesMap from '$lib/components/PlacesMap.svelte';
 	import VenueFilterBar from '$lib/components/VenueFilterBar.svelte';
 	import {
+		MEET_WALK_MINUTES,
 		distanceMeters,
 		walkMinutes,
 		meetWalkMeters,
@@ -106,9 +107,23 @@
 			Within a {meet.minutes}-minute walk.
 		</h2>
 		<p class="mt-3 text-sm leading-6 text-muted">
-			Marked pins are inside this walk. Use 10 min or 15 min to widen the radius.
+			Marked pins are inside this walk. Widen the radius if you need more places.
 			<a href="/map" class="underline decoration-line underline-offset-4">Clear</a>
 		</p>
+		<div class="mt-4 flex flex-wrap gap-2" role="group" aria-label="Walk radius">
+			{#each MEET_WALK_MINUTES as minutes (minutes)}
+				<button
+					type="button"
+					class="border px-3 py-1.5 text-sm shadow-[2px_2px_0_0_var(--color-ink)] {meet.minutes === minutes
+						? 'border-ink bg-ink text-paper'
+						: 'border-ink bg-paper'}"
+					aria-pressed={meet.minutes === minutes}
+					onclick={() => setMeet(minutes)}
+				>
+					{minutes} min walk
+				</button>
+			{/each}
+		</div>
 	</section>
 {:else}
 	<section class="mb-8 max-w-xl">

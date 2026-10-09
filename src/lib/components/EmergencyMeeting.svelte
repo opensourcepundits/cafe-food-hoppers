@@ -28,7 +28,7 @@
 					lng: String(position.coords.longitude)
 				});
 				locating = false;
-				goto(`/map?${params}`);
+				void goto(`/map?${params}`, { invalidateAll: true });
 			},
 			() => {
 				locating = false;

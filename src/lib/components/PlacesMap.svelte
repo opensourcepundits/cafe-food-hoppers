@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import type { Circle, Map as LeafletMap, Marker } from 'leaflet';
-	import StarRating from '$lib/components/StarRating.svelte';
+	import type { Circle, Map as LeafletMap, Marker, Popup } from 'leaflet';
 	import {
 		MEET_WALK_MINUTES,
 		ratingLabel,
@@ -13,14 +12,12 @@
 
 	let {
 		places,
-		selected = null,
 		meet = null,
 		onview,
 		onselect,
 		onmeet
 	}: {
 		places: MapPlace[];
-		selected?: MapPlace | null;
 		meet?: { lat: number; lng: number; meters: number; minutes: MeetWalkMinutes; ids: string[] } | null;
 		onview?: (frame: MapFrame) => void;
 		onselect?: (place: MapPlace | null) => void;
@@ -61,8 +58,24 @@
 		return leaflet?.divIcon({
 			className: `pin-icon${pulse}`,
 			html: `<span class="pin-ring"></span><span class="pin-ring pin-ring-late"></span><span class="pin-dot ${tone}"></span>`,
-			iconSize: [60, 60],
-			iconAnchor: [30, 30]
+			iconSize: [28, 28],
+			iconAnchor: [14, 14],
+			popupAnchor: [0, -12]
+		});
+	}
+
+	function openOnly(id: string) {
+		const marker = markers.get(id);
+		if (!map || !marker) return;
+		for (const [otherId, other] of markers) {
+			if (otherId !== id) other.closePopup();
+		}
+		map.closePopup();
+		marker.openPopup();
+		const open = marker.getPopup()?.getElement() ?? null;
+		if (!open) return;
+		root?.querySelectorAll('.leaflet-popup').forEach((node) => {
+			if (node !== open) node.remove();
 		});
 	}
 
@@ -157,6 +170,7 @@
 					icon,
 					title: place.name,
 					keyboard: true,
+					bubblingMouseEvents: false,
 					zIndexOffset: highlighted ? 700 : 0
 				})
 				.addTo(map)
@@ -164,11 +178,14 @@
 					minWidth: 220,
 					maxWidth: 260,
 					autoPan: false,
+					autoClose: true,
+					closeOnClick: true,
 					className: 'pin-popup'
 				})
-				.on('click', () => {
-					center(place.id);
+				.on('click', (event) => {
+					event.originalEvent?.stopPropagation();
 					reportSelect?.(place);
+					openOnly(place.id);
 				});
 			markers.set(place.id, marker);
 		}
@@ -325,9 +342,8 @@
 	export function focus(id: string) {
 		const marker = markers.get(id);
 		if (!map || !marker) return;
-		map.closePopup();
 		center(id);
-		marker.openPopup();
+		openOnly(id);
 	}
 
 	onMount(() => {
@@ -364,6 +380,13 @@
 					});
 				}, 250);
 			};
+			next.on('popupopen', (event) => {
+				const opened = (event as typeof event & { popup?: Popup }).popup?.getElement() ?? null;
+				if (!opened) return;
+				root?.querySelectorAll('.leaflet-popup').forEach((node) => {
+					if (node !== opened) node.remove();
+				});
+			});
 			next.on('moveend', publish);
 			next.on('locationfound', (event) => {
 				const found = event as typeof event & { latlng: { lat: number; lng: number }; accuracy: number };
@@ -448,51 +471,6 @@
 			{locateError}
 		</p>
 	{/if}
-	{#if selected}
-		<div class="absolute bottom-3 left-3 z-20 w-64 border border-ink bg-paper px-3.5 py-3 shadow-[4px_4px_0_0_var(--color-ink)]">
-			<div class="flex items-start justify-between gap-3">
-				<p class="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">{selected.district}</p>
-				<button
-					type="button"
-					class="shrink-0 text-sm leading-none text-muted"
-					aria-label="Close"
-					onclick={() => onselect?.(null)}
-				>
-					×
-				</button>
-			</div>
-			<div class="mt-1 flex items-start justify-between gap-2">
-				<p class="min-w-0 text-sm font-semibold leading-5">{selected.name}</p>
-				<span
-					class="shrink-0 border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] {selected.open
-						? 'border-open text-open'
-						: 'border-line text-muted'}"
-				>
-					{selected.open ? 'Open' : 'Closed'}
-				</span>
-			</div>
-			{#each selected.alertTitles as title, index (`${selected.id}-alert-${index}`)}
-				<p class="mt-2 text-sm font-medium leading-5 text-accent">{title}</p>
-			{/each}
-			<div class="mt-2">
-				<StarRating average={selected.ratingAverage} count={selected.ratingCount} />
-			</div>
-			<p class="mt-1.5 text-xs leading-5 text-muted">
-				{selected.hours} · {selected.wifi ?? 'No WiFi'}
-			</p>
-			<ul class="mt-2 flex flex-wrap gap-1">
-				{#each [selected.noise, selected.lighting.join(' · '), selected.parking].filter(Boolean) as label (label)}
-					<li class="border border-line bg-paper-2 px-1.5 py-0.5 text-[11px] text-ink">{label}</li>
-				{/each}
-			</ul>
-			<a
-				href="/venues/{selected.slug}"
-				class="mt-3 inline-flex border border-ink px-2 py-1 text-xs"
-			>
-				More info
-			</a>
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -514,6 +492,7 @@
 	:global(.pin-icon) {
 		background: transparent;
 		border: none;
+		pointer-events: none;
 	}
 
 	:global(.pin-dot) {
@@ -524,6 +503,7 @@
 		height: 18px;
 		margin: -9px 0 0 -9px;
 		border: 2px solid #fff;
+		pointer-events: auto;
 		border-radius: 999px;
 		box-shadow: 0 0 0 2px #111, 0 2px 8px rgba(0, 0, 0, 0.45);
 		cursor: pointer;

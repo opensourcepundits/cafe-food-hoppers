@@ -141,7 +141,6 @@
 	<PlacesMap
 		bind:this={map}
 		places={data.places}
-		{selected}
 		{meet}
 		onview={(next) => (frame = next)}
 		onselect={(place) => (selected = place)}

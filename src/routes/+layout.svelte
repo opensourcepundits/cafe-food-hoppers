@@ -111,9 +111,8 @@
 	<EmergencyMeeting />
 
 	<footer class="border-t border-line">
-		<div class="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-6 text-xs text-muted sm:flex-row sm:justify-between sm:px-6">
+		<div class="mx-auto max-w-6xl px-4 py-6 text-xs text-muted sm:px-6">
 			<p>Hours in Indian/Mauritius time (UTC+4).</p>
-			<p>Independent index. Not affiliated with listed venues.</p>
 		</div>
 	</footer>
 </div>

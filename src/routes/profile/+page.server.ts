@@ -1,5 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { changePassword } from '$lib/server/auth';
+import { changePassword, userHasPassword } from '$lib/server/auth';
 import { listCommentsByUser } from '$lib/server/comments';
 import { listFavourites } from '$lib/server/favourites';
 import type { Actions, PageServerLoad } from './$types';
@@ -13,6 +13,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		]);
 		return {
 			name: locals.user.firstName?.trim() || locals.user.email.split('@')[0],
+			hasPassword: await userHasPassword(locals.user.id),
 			favourites,
 			comments
 		};

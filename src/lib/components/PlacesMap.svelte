@@ -387,7 +387,7 @@
 
 </script>
 
-<div class="relative {fullscreen ? 'fixed inset-0 z-30 bg-paper' : ''} {meet ? 'meet-active' : ''}">
+<div class="relative isolate {fullscreen ? 'fixed inset-0 z-30 bg-paper' : 'z-0'}">
 	<div
 		bind:this={root}
 		class="w-full bg-paper-2 {fullscreen ? 'h-full' : 'h-[min(70vh,640px)] border border-line'}"

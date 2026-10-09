@@ -79,7 +79,8 @@ export const users = pgTable(
 		id: uuid('id').primaryKey().defaultRandom(),
 		email: text('email').notNull().unique(),
 		phone: text('phone').unique(),
-		passwordHash: text('password_hash').notNull(),
+		passwordHash: text('password_hash'),
+		googleSub: text('google_sub'),
 		firstName: text('first_name'),
 		role: text('role')
 			.$type<'user' | 'place_manager' | 'franchise_manager' | 'superuser'>()
@@ -93,7 +94,10 @@ export const users = pgTable(
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
-	(table) => [index('idx_users_venue').on(table.venueId)]
+	(table) => [
+		index('idx_users_venue').on(table.venueId),
+		uniqueIndex('users_google_sub_unique').on(table.googleSub)
+	]
 );
 
 export const franchises = pgTable('franchises', {

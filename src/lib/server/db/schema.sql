@@ -55,7 +55,8 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT UNIQUE NOT NULL,
     phone TEXT UNIQUE,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,
+    google_sub TEXT,
     first_name TEXT,
     role TEXT NOT NULL DEFAULT 'user' CONSTRAINT users_role_check CHECK (role IN ('user', 'place_manager', 'franchise_manager', 'superuser')),
     can_create BOOLEAN NOT NULL DEFAULT FALSE,
@@ -95,6 +96,7 @@ CREATE TABLE user_venues (
 );
 
 CREATE INDEX idx_users_venue ON users (venue_id);
+CREATE UNIQUE INDEX users_google_sub_unique ON users (google_sub);
 CREATE INDEX idx_user_venues_venue ON user_venues (venue_id);
 
 CREATE TABLE comments (

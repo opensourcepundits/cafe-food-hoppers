@@ -12,6 +12,7 @@ import {
 	isOpenNow,
 	isOpenTillLate,
 	normalizeOpeningHours,
+	parseMeetMinutes,
 	ZOOM_WALK_METERS,
 	ongoingSpecials,
 	upcomingSpecials,
@@ -110,7 +111,8 @@ export function parseFilters(url: URL): VenueFilters {
 		),
 		zoom: url.searchParams.get('zoom') === '1',
 		lat: asCoord(url.searchParams.get('lat')),
-		lng: asCoord(url.searchParams.get('lng'))
+		lng: asCoord(url.searchParams.get('lng')),
+		meetMinutes: parseMeetMinutes(url.searchParams.get('meet'))
 	};
 }
 

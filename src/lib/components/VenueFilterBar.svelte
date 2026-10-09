@@ -45,6 +45,11 @@
 </script>
 
 <form method="GET" data-sveltekit-noscroll class="mb-8 border border-line bg-paper-2 p-4">
+	{#if filters.meetMinutes && filters.lat !== null && filters.lng !== null}
+		<input type="hidden" name="meet" value={filters.meetMinutes} />
+		<input type="hidden" name="lat" value={filters.lat} />
+		<input type="hidden" name="lng" value={filters.lng} />
+	{/if}
 	<div class="flex flex-col gap-3 sm:flex-row">
 		<label class="relative block flex-1">
 			<span class="sr-only">Search</span>

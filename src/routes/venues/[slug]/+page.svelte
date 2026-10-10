@@ -13,6 +13,8 @@
 	import StarRating from '$lib/components/StarRating.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { enhance } from '$app/forms';
+	import { iosNeedsHomeScreen } from '$lib/ios-install';
+	import { armPushFromGesture, notificationsActive } from '$lib/push-client';
 	import MapEmbed from '$lib/components/MapEmbed.svelte';
 	import ImageCarousel from '$lib/components/ImageCarousel.svelte';
 	import MenuList from '$lib/components/MenuList.svelte';
@@ -42,8 +44,28 @@
 
 	let { data, form } = $props();
 	let sendingRating = $state(false);
+	let notificationsOn = $state<boolean | null>(null);
+	let arming: Promise<void> = Promise.resolve();
 	const venue = $derived(data.venue);
 	const justSaved = $derived(page.url.searchParams.get('saved') === '1');
+
+	$effect(() => {
+		if (!data.favourite || !justSaved) {
+			notificationsOn = null;
+			return;
+		}
+		if (iosNeedsHomeScreen() || (typeof Notification !== 'undefined' && Notification.permission !== 'granted')) {
+			notificationsOn = false;
+			return;
+		}
+		let cancelled = false;
+		void notificationsActive().then((on) => {
+			if (!cancelled) notificationsOn = on;
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	const maps = $derived(
 		venue.contact.google_maps ??
@@ -74,9 +96,23 @@
 		<div class="mt-1 flex flex-wrap items-center gap-3">
 			<h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">{venue.name}</h2>
 			{#if data.user}
-				<form method="POST" action="?/favourite">
+				<form
+					method="POST"
+					action="?/favourite"
+					use:enhance={() => {
+						const arm = arming;
+						arming = Promise.resolve();
+						return async ({ update }) => {
+							await arm;
+							await update();
+						};
+					}}
+				>
 					<button
 						type="submit"
+						onclick={() => {
+							if (!data.favourite) arming = armPushFromGesture(data.vapidPublicKey);
+						}}
 						class="px-3 py-1 text-sm {data.favourite
 							? 'border border-ink bg-ink text-paper'
 							: 'border border-line bg-paper text-muted hover:border-ink hover:text-ink'}"
@@ -84,9 +120,16 @@
 						{data.favourite ? 'Saved' : 'Save'}
 					</button>
 				</form>
-				{#if data.favourite && justSaved}
-					<div class="mt-3 w-full basis-full border border-line px-4 py-3">
-						<p class="text-sm">Get a notification when an event here is about to start, or when a promotion starts now.</p>
+				{#if data.favourite && justSaved && notificationsOn === true}
+					<p class="mt-3 w-full basis-full text-sm text-muted">
+						Saved. This device will be notified when an event here is about to start.
+					</p>
+				{:else if data.favourite && justSaved && notificationsOn === false}
+					<div class="mt-3 w-full basis-full border border-accent px-4 py-3">
+						<p class="font-mono text-[10px] uppercase tracking-[0.18em] text-accent">Notifications are off</p>
+						<p class="mt-2 text-sm leading-6">
+							Allow notifications so this place can tell you when an event is about to start, or when a promotion starts now.
+						</p>
 						<div class="mt-3">
 							<PushToggle vapidPublicKey={data.vapidPublicKey} />
 						</div>

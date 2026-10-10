@@ -1,3 +1,16 @@
+let openInstall: (() => void) | null = null;
+
+export function registerIosInstallOpener(open: () => void): () => void {
+	openInstall = open;
+	return () => {
+		if (openInstall === open) openInstall = null;
+	};
+}
+
+export function openIosInstallPrompt(): void {
+	openInstall?.();
+}
+
 export function iosNeedsHomeScreen(): boolean {
 	if (typeof navigator === 'undefined') return false;
 	const ua = navigator.userAgent;

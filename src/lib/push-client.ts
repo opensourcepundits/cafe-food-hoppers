@@ -1,3 +1,5 @@
+import { iosNeedsHomeScreen, openIosInstallPrompt } from '$lib/ios-install';
+
 export function urlBase64ToUint8Array(value: string): Uint8Array {
 	const padding = '='.repeat((4 - (value.length % 4)) % 4);
 	const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -16,6 +18,36 @@ export async function currentPushSubscription(): Promise<PushSubscription | null
 	const registration = await navigator.serviceWorker.getRegistration();
 	if (!registration) return null;
 	return registration.pushManager.getSubscription();
+}
+
+export async function notificationsActive(): Promise<boolean> {
+	if (!pushSupported() || Notification.permission !== 'granted') return false;
+	return Boolean(await currentPushSubscription());
+}
+
+/** Ask for permission in the same click that started this, then subscribe when it is still off. */
+export function armPushFromGesture(vapidPublicKey: string): Promise<void> {
+	try {
+		if (iosNeedsHomeScreen()) {
+			openIosInstallPrompt();
+			return Promise.resolve();
+		}
+		if (!pushSupported() || Notification.permission === 'denied') return Promise.resolve();
+		if (Notification.permission === 'granted') {
+			return currentPushSubscription()
+				.then(async (existing) => {
+					if (!existing) await enablePush(vapidPublicKey);
+				})
+				.catch(() => undefined);
+		}
+		return Notification.requestPermission()
+			.then(async (permission) => {
+				if (permission === 'granted') await enablePush(vapidPublicKey);
+			})
+			.catch(() => undefined);
+	} catch {
+		return Promise.resolve();
+	}
 }
 
 export async function enablePush(vapidPublicKey: string): Promise<'on' | 'denied' | 'unsupported' | 'missing' | 'error'> {

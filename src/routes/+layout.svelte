@@ -5,6 +5,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import AddToHomeScreen from '$lib/components/AddToHomeScreen.svelte';
 	import EmergencyMeeting from '$lib/components/EmergencyMeeting.svelte';
+	import NotificationNudge from '$lib/components/NotificationNudge.svelte';
 	import { dropThisDevice } from '$lib/push-client';
 
 	let { children, data } = $props();
@@ -104,6 +105,7 @@
 		</div>
 	</header>
 	<AddToHomeScreen />
+	<NotificationNudge vapidPublicKey={data.vapidPublicKey} signedIn={Boolean(data.user)} />
 
 	<main class="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6">
 		{@render children()}

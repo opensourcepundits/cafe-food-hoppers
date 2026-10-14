@@ -14,6 +14,7 @@ declare global {
 				canEdit: boolean;
 				firstName: string | null;
 				venueId: string | null;
+				franchiseId: string | null;
 				venueIds: string[];
 				emails: string[];
 			} | null;

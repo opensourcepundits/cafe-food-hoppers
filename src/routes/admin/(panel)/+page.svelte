@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { activeTemporaryClosure, formatMauritiusWhen } from '$lib/venue';
+
 	let { data } = $props();
 	let hideToast = $state(false);
 </script>
@@ -56,10 +58,17 @@
 			</thead>
 			<tbody class="divide-y divide-line">
 				{#each data.venues as venue (venue.id)}
+					{@const closure = activeTemporaryClosure(venue.announcements)}
 					<tr>
 						<td class="px-4 py-3">
 							<p class="font-medium">{venue.name}</p>
 							<p class="font-mono text-[11px] text-muted">/{venue.slug}</p>
+							{#if closure}
+								<p class="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-closed">
+									Closed{#if closure.ends_at}
+										· open {formatMauritiusWhen(closure.ends_at)}{/if}
+								</p>
+							{/if}
 						</td>
 						<td class="px-4 py-3 text-muted">{venue.district}</td>
 						<td class="px-4 py-3 tabular-nums text-muted">
@@ -67,14 +76,24 @@
 						</td>
 						<td class="px-4 py-3 tabular-nums text-muted">{venue.specials.length}</td>
 						<td class="px-4 py-3 text-right">
-							{#if venue.editable}
-								<a
-									href="/admin/venues/{venue.id}"
-									class="font-mono text-[11px] uppercase tracking-[0.14em] underline decoration-line underline-offset-4"
-								>
-									Edit
-								</a>
-							{/if}
+							<span class="inline-flex gap-3">
+								{#if data.canReportClosure && venue.editable}
+									<a
+										href="/admin/closure?venue={venue.id}"
+										class="font-mono text-[11px] uppercase tracking-[0.14em] underline decoration-line underline-offset-4"
+									>
+										Closure
+									</a>
+								{/if}
+								{#if venue.editable}
+									<a
+										href="/admin/venues/{venue.id}"
+										class="font-mono text-[11px] uppercase tracking-[0.14em] underline decoration-line underline-offset-4"
+									>
+										Edit
+									</a>
+								{/if}
+							</span>
 						</td>
 					</tr>
 				{/each}

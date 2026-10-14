@@ -249,6 +249,8 @@ export type MapFrame = {
 export type LiveVenue = Venue & {
 	open: boolean;
 	openLate: boolean;
+	temporarilyClosed: boolean;
+	reopensAt: string | null;
 	workFriendly: boolean;
 	walkMeters: number | null;
 	alerts: Announcement[];
@@ -563,6 +565,41 @@ export function isAnnouncementActive(announcement: Announcement, at = new Date()
 
 export function activeAnnouncements(announcements: Announcement[], at = new Date()): Announcement[] {
 	return announcements.filter((item) => isAnnouncementActive(item, at));
+}
+
+/** The closure that is in effect now. The one that ends latest wins if several overlap. */
+export function activeTemporaryClosure(announcements: Announcement[], at = new Date()): Announcement | null {
+	let chosen: Announcement | null = null;
+	for (const item of announcements) {
+		if (item.type !== 'closure' || !isAnnouncementActive(item, at)) continue;
+		if (!chosen) {
+			chosen = item;
+			continue;
+		}
+		const chosenEnd = chosen.ends_at ? Date.parse(chosen.ends_at) : Number.POSITIVE_INFINITY;
+		const itemEnd = item.ends_at ? Date.parse(item.ends_at) : Number.POSITIVE_INFINITY;
+		if (itemEnd > chosenEnd) chosen = item;
+	}
+	return chosen;
+}
+
+const EXPECTED_OPEN = /\s*Expected to open again\b[\s\S]*$/i;
+
+export function closureNote(body: string): string {
+	return body.replace(EXPECTED_OPEN, '').trim();
+}
+
+export function closureAnnouncementBody(note: string, endsAt: string): string {
+	const when = formatMauritiusWhen(endsAt);
+	const expected = when ? `Expected to open again ${when}.` : '';
+	const trimmed = note.trim();
+	return [trimmed, expected].filter(Boolean).join(' ');
+}
+
+export function temporaryClosureLabel(endsAt: string | null): string {
+	const when = formatMauritiusWhen(endsAt);
+	if (!when) return 'Temporarily closed';
+	return `Temporarily closed · Expected open ${when}`;
 }
 
 export function noiseLabel(level: NoiseLevel | undefined): string | null {

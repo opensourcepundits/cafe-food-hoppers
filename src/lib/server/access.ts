@@ -23,6 +23,12 @@ export function canManagePlaces(user: AuthUser | null): boolean {
 	return user.canCreate || user.canEdit;
 }
 
+/** Place managers, franchise managers, and superusers can mark a place closed right now. */
+export function canReportClosure(user: AuthUser | null): boolean {
+	if (!user) return false;
+	return user.role === 'place_manager' || user.role === 'franchise_manager' || user.role === 'superuser';
+}
+
 export function canPostAlert(user: AuthUser | null, venue: VenueAccess): boolean {
 	if (canEditVenue(user, venue)) return true;
 	return canCreateVenue(user) && venue.createdBy === user?.id;

@@ -3,9 +3,33 @@
 	import { formatMauritiusWhen } from '$lib/venue';
 
 	let { data, form } = $props();
-	let role = $state(data.account.role === 'superuser' ? 'user' : data.account.role);
+	let role = $state(form?.role || (data.account.role === 'superuser' ? 'user' : data.account.role));
+	let venueId = $state(form ? form.venueId : (data.account.venueId ?? ''));
+	let franchiseChoice = $state(form ? form.franchiseId : (data.account.franchiseId ?? ''));
+	let franchiseName = $state(form?.franchiseName ?? '');
+	let selectedPlaces = $state<string[]>(form?.placeIds ?? []);
+	let placeQuery = $state('');
 	const saved = $derived(page.url.searchParams.get('saved') === '1');
+	const creatingFranchise = $derived(franchiseChoice === 'new');
+	const placeNeedle = $derived(placeQuery.trim().toLowerCase());
 	const field = 'w-full border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink';
+
+	function placeMatches(place: { name: string; district: string; franchiseName: string | null }) {
+		if (!placeNeedle) return true;
+		return `${place.name} ${place.district} ${place.franchiseName ?? ''}`.toLowerCase().includes(placeNeedle);
+	}
+
+	const memberPlaces = $derived(
+		creatingFranchise
+			? []
+			: data.places.filter((place) => place.franchiseId === franchiseChoice && placeMatches(place))
+	);
+	const availablePlaces = $derived(
+		data.places.filter((place) => {
+			if (!creatingFranchise && place.franchiseId === franchiseChoice) return false;
+			return placeMatches(place) || selectedPlaces.includes(place.id);
+		})
+	);
 </script>
 
 <svelte:head>
@@ -55,12 +79,10 @@
 		{#if role === 'place_manager'}
 			<label class="mt-4 block text-sm">
 				<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted">Their place</span>
-				<select class={field} name="venueId">
+				<select class={field} name="venueId" bind:value={venueId} required>
 					<option value="">Choose a place</option>
 					{#each data.places as place (place.id)}
-						<option value={place.id} selected={place.id === data.account.venueId}>
-							{place.name} · {place.district}
-						</option>
+						<option value={place.id}>{place.name} · {place.district}</option>
 					{/each}
 				</select>
 			</label>
@@ -69,13 +91,92 @@
 		{#if role === 'franchise_manager'}
 			<label class="mt-4 block text-sm">
 				<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted">Franchise</span>
-				<select class={field} name="franchiseId">
+				<select
+					class={field}
+					name="franchiseId"
+					bind:value={franchiseChoice}
+					required
+					onchange={() => {
+						selectedPlaces = [];
+						placeQuery = '';
+					}}
+				>
 					<option value="">Choose a franchise</option>
+					<option value="new">Create a franchise</option>
 					{#each data.franchises as group (group.id)}
-						<option value={group.id} selected={group.id === data.account.franchiseId}>{group.name}</option>
+						<option value={group.id}>{group.name}</option>
 					{/each}
 				</select>
 			</label>
+
+			{#if creatingFranchise || franchiseChoice}
+				{#if creatingFranchise}
+					<label class="mt-4 block text-sm">
+						<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted">Franchise name</span>
+						<input
+							class={field}
+							name="franchiseName"
+							bind:value={franchiseName}
+							maxlength="80"
+							autocomplete="off"
+							required
+						/>
+					</label>
+				{/if}
+
+				<fieldset class="mt-4">
+					<legend class="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">Places</legend>
+					<p class="mt-1 text-sm text-muted">
+						{creatingFranchise
+							? 'Add existing places to this franchise.'
+							: 'Add existing places. Ones already in this franchise stay checked.'}
+					</p>
+					{#if data.places.length > 6}
+						<input
+							class="{field} mt-3"
+							type="search"
+							placeholder="Filter places"
+							bind:value={placeQuery}
+							autocomplete="off"
+							onkeydown={(event) => {
+								if (event.key === 'Enter') event.preventDefault();
+							}}
+						/>
+					{/if}
+					{#if memberPlaces.length > 0 || availablePlaces.length > 0}
+						<ul class="mt-3 max-h-64 divide-y divide-line overflow-y-auto border border-line">
+							{#each memberPlaces as place (place.id)}
+								<li>
+									<label class="flex items-start gap-3 px-3 py-2 text-sm">
+										<input type="checkbox" checked disabled />
+										<span>
+											<span class="block">{place.name}</span>
+											<span class="text-muted">{place.district} · already in this franchise</span>
+										</span>
+									</label>
+								</li>
+							{/each}
+							{#each availablePlaces as place (place.id)}
+								<li>
+									<label class="flex items-start gap-3 px-3 py-2 text-sm">
+										<input type="checkbox" name="placeIds" value={place.id} bind:group={selectedPlaces} />
+										<span>
+											<span class="block">{place.name}</span>
+											<span class="text-muted">
+												{place.district}{place.franchiseName ? ` · currently ${place.franchiseName}` : ''}
+											</span>
+										</span>
+									</label>
+								</li>
+							{/each}
+						</ul>
+					{:else}
+						<p class="mt-3 text-sm text-muted">
+							{data.places.length === 0 ? 'No places yet.' : 'No places match.'}
+						</p>
+					{/if}
+				</fieldset>
+			{/if}
 		{/if}
 
 		<button type="submit" class="mt-4 border border-ink bg-ink px-4 py-2 text-sm text-paper">Update role</button>

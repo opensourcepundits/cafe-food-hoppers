@@ -83,6 +83,26 @@ function postedNotice(source: NoticeSource, alert: Announcement): PlaceNotice {
 	};
 }
 
+/** Tell people who saved a place that an admin reopened it. */
+export function reopenedNotice(
+	source: NoticeSource,
+	closureId: string,
+	message: string,
+	at = new Date()
+): PlaceNotice {
+	const startsAt = at.toISOString();
+	const key = `reopen:${closureId}`;
+	return {
+		title: clip(`${source.name} is open again`, 80),
+		body: clip(message.trim() || 'This place is open again.'),
+		url: `/venues/${source.slug}`,
+		tag: `reopen-${key}-${startsAt}`,
+		eventKey: key,
+		phase: 'now',
+		startsAt
+	};
+}
+
 /** A promotion an editor started on the spot, rather than a scheduled start. */
 export function promotionNowNotice(source: NoticeSource, special: Special): PlaceNotice {
 	const key = `special:${special.id}`;

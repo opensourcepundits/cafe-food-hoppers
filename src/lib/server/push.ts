@@ -7,6 +7,7 @@ import {
 	dueEventNotices,
 	postedNotices,
 	promotionNowNotice,
+	reopenedNotice,
 	type NoticeSource,
 	type PlaceNotice
 } from '$lib/server/place-notices';
@@ -146,6 +147,51 @@ export async function dispatchDueEvents(venueId?: string, at = new Date()): Prom
 		}
 	} catch (error) {
 		console.error('Place notification failed', error);
+	}
+}
+
+/** Notify people who saved a place that an admin marked it open again. */
+export async function dispatchReopened(
+	venueId: string,
+	closureId: string,
+	message: string
+): Promise<'sent' | 'quiet' | 'failed' | 'none'> {
+	try {
+		const pushReady = configure();
+		const [venue] = await db
+			.select({
+				id: venues.id,
+				name: venues.name,
+				slug: venues.slug,
+				specials: venues.specials,
+				announcements: venues.announcements
+			})
+			.from(venues)
+			.where(eq(venues.id, venueId))
+			.limit(1);
+		if (!venue) return 'none';
+		const devices = await subscribers(venue.id);
+		if (!devices.length) return 'quiet';
+		if (!pushReady) return 'failed';
+		const notice = reopenedNotice(
+			{
+				name: venue.name,
+				slug: venue.slug,
+				specials: venue.specials ?? [],
+				announcements: venue.announcements ?? []
+			},
+			closureId,
+			message
+		);
+		const claimed = await claim(venue.id, notice);
+		if (!claimed) return 'failed';
+		const pushed = await sendAll(devices, notice);
+		if (pushed) return 'sent';
+		await db.delete(pushDeliveries).where(eq(pushDeliveries.id, claimed));
+		return 'failed';
+	} catch (error) {
+		console.error('Place notification failed', error);
+		return 'failed';
 	}
 }
 

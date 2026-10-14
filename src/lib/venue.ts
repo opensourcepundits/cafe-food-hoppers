@@ -251,6 +251,7 @@ export type LiveVenue = Venue & {
 	openLate: boolean;
 	temporarilyClosed: boolean;
 	reopensAt: string | null;
+	closureReason: string | null;
 	workFriendly: boolean;
 	walkMeters: number | null;
 	alerts: Announcement[];
@@ -589,16 +590,17 @@ export function closureNote(body: string): string {
 	return body.replace(EXPECTED_OPEN, '').trim();
 }
 
-export function closureAnnouncementBody(note: string, endsAt: string): string {
+export function closureAnnouncementBody(note: string, endsAt: string | null): string {
+	const trimmed = note.trim();
+	if (!endsAt) return trimmed;
 	const when = formatMauritiusWhen(endsAt);
 	const expected = when ? `Expected to open again ${when}.` : '';
-	const trimmed = note.trim();
 	return [trimmed, expected].filter(Boolean).join(' ');
 }
 
 export function temporaryClosureLabel(endsAt: string | null): string {
 	const when = formatMauritiusWhen(endsAt);
-	if (!when) return 'Temporarily closed';
+	if (!when) return 'Closed indefinitely';
 	return `Temporarily closed · Expected open ${when}`;
 }
 

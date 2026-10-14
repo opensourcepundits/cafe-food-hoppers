@@ -510,7 +510,7 @@
 	}
 
 	:global(.pin-dot-open) {
-		background: #128a52;
+		background: var(--color-open);
 	}
 
 	:global(.pin-dot-closed) {
@@ -538,7 +538,7 @@
 	}
 
 	:global(.pin-pulse-ongoing .pin-ring) {
-		border: 3px solid #128a52;
+		border: 3px solid var(--color-open);
 		animation: pin-pulse-ongoing 1.6s ease-out infinite;
 	}
 

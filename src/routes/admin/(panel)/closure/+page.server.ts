@@ -39,6 +39,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		selectedId,
 		closed: url.searchParams.get('closed') === '1',
 		updated: url.searchParams.get('updated') === '1',
+		indefinite: url.searchParams.get('indefinite') === '1',
 		reopened: url.searchParams.get('reopened') === '1',
 		notice: url.searchParams.get('notice')
 	};
@@ -51,14 +52,17 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const venueId = String(data.get('venueId') ?? '');
 		const note = String(data.get('note') ?? '').trim();
+		const indefinite = data.get('indefinite') === '1';
 		const reopensRaw = String(data.get('reopens') ?? '');
-		const posted = { venueId, note, reopens: reopensRaw };
+		const posted = { venueId, note, reopens: reopensRaw, indefinite: indefinite ? '1' : '' };
 		const venue = await getVenueById(venueId);
 		if (!venue || !canEditVenue(locals.user, venue)) return fail(400, { ...posted, error: 'Choose a place you manage.' });
-		if (note.length > NOTE_LIMIT) return fail(400, { ...posted, error: 'Keep the note under 400 characters.' });
-		const reopens = datetimeLocalToIso(reopensRaw);
-		if (!reopens) return fail(400, { ...posted, error: 'Choose when the place is expected to open again.' });
-		if (Date.parse(reopens) <= Date.now()) {
+		if (note.length > NOTE_LIMIT) return fail(400, { ...posted, error: 'Keep the reason under 400 characters.' });
+		const reopens = indefinite ? null : datetimeLocalToIso(reopensRaw);
+		if (!indefinite && !reopens) {
+			return fail(400, { ...posted, error: 'Choose when the place is expected to open again, or mark it indefinite.' });
+		}
+		if (reopens && Date.parse(reopens) <= Date.now()) {
 			return fail(400, { ...posted, error: 'The reopen time has to be in the future.' });
 		}
 
@@ -88,11 +92,12 @@ export const actions: Actions = {
 
 		const saved = await setVenueAnnouncements(venue.id, next);
 		if (!saved) error(404, 'Place not found.');
+		const indefiniteFlag = reopens ? '' : '&indefinite=1';
 		if (!primary) {
 			const notice = await dispatchPostedAnnouncement(saved.id, createdAlert, locals.user.id);
 			redirect(303, `/admin/closure?venue=${venue.id}&closed=1&notice=${notice}`);
 		}
-		redirect(303, `/admin/closure?venue=${venue.id}&updated=1`);
+		redirect(303, `/admin/closure?venue=${venue.id}&updated=1${indefiniteFlag}`);
 	},
 	reopen: async ({ request, locals }) => {
 		if (!locals.user) redirect(303, '/login?next=/admin/closure');

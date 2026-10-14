@@ -1,6 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { canEditVenue, canReportClosure } from '$lib/server/access';
-import { dispatchPostedAnnouncement } from '$lib/server/push';
+import { dispatchPostedAnnouncement, dispatchReopened } from '$lib/server/push';
 import { getVenueById, listVenuesAdmin, setVenueAnnouncements } from '$lib/server/venues';
 import {
 	activeTemporaryClosure,
@@ -13,6 +13,7 @@ import {
 import type { Actions, PageServerLoad } from './$types';
 
 const NOTE_LIMIT = 400;
+const MESSAGE_LIMIT = 140;
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) redirect(303, '/login?next=/admin/closure');
@@ -106,6 +107,10 @@ export const actions: Actions = {
 		const venue = await getVenueById(String(data.get('venueId') ?? ''));
 		if (!venue || !canEditVenue(locals.user, venue)) error(403, 'You cannot change that place.');
 		const closureId = String(data.get('closureId') ?? '');
+		const message = String(data.get('message') ?? '').trim();
+		if (message.length > MESSAGE_LIMIT) {
+			return fail(400, { error: 'Keep the notification under 140 characters.' });
+		}
 		const current = venue.announcements.find((item) => item.id === closureId && item.type === 'closure');
 		if (!current) return fail(404, { error: 'That closure is no longer there.' });
 		if (alertTiming(current) === 'done') redirect(303, `/admin/closure?venue=${venue.id}`);
@@ -115,6 +120,7 @@ export const actions: Actions = {
 		);
 		const saved = await setVenueAnnouncements(venue.id, next);
 		if (!saved) error(404, 'Place not found.');
-		redirect(303, `/admin/closure?venue=${venue.id}&reopened=1`);
+		const notice = await dispatchReopened(saved.id, closureId, message);
+		redirect(303, `/admin/closure?venue=${venue.id}&reopened=1&notice=${notice}`);
 	}
 };

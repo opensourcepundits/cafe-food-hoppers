@@ -57,7 +57,17 @@
 		</p>
 	{/if}
 	{#if data.reopened}
-		<p class="mt-3 text-sm">Place marked open again. Regular hours apply.</p>
+		<p class="mt-3 text-sm">
+			{#if data.notice === 'sent'}
+				Place marked open again. A notification was sent to anyone who saved this place.
+			{:else if data.notice === 'quiet'}
+				Place marked open again. Nobody who saved this place has notifications on.
+			{:else if data.notice === 'failed'}
+				Place marked open again, but the notification could not be sent.
+			{:else}
+				Place marked open again. Regular hours apply.
+			{/if}
+		</p>
 	{/if}
 	{#if data.places.length === 0}
 		<p class="mt-3 text-sm text-muted">No places are assigned to this account.</p>
@@ -136,12 +146,22 @@
 							<p class="mt-2 max-w-xl text-sm">{closure.note}</p>
 						{/if}
 					</div>
-					<form method="POST" action="?/reopen">
+					<form method="POST" action="?/reopen" class="grid w-full gap-2 sm:max-w-xs">
 						<input type="hidden" name="venueId" value={closure.venueId} />
 						<input type="hidden" name="closureId" value={closure.id} />
+						<label class="block">
+							<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Message</span>
+							<textarea
+								class="{field} min-h-20"
+								name="message"
+								maxlength="140"
+								placeholder="We're open again"
+							></textarea>
+						</label>
+						<p class="text-sm text-muted">Sent to people who saved this place. Leave it blank for a short default.</p>
 						<button
 							type="submit"
-							class="border border-line px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted hover:border-ink hover:text-ink"
+							class="w-fit border border-ink bg-ink px-3 py-1.5 text-sm text-paper"
 						>
 							Reopen now
 						</button>

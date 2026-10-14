@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatSpecialWhen, type LiveVenue } from '$lib/venue';
+	import { formatSpecialWhen, temporaryClosureLabel, type LiveVenue } from '$lib/venue';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import {
 		amenityLabels,
@@ -24,7 +24,7 @@
 			outletRatingLabel(outletRatingOf(venue.workInfo)) ??
 				outletLabel(venue.workInfo.outlet_access, venue.workInfo.outlets),
 			noiseLabel(venue.workInfo.noise_level),
-			venue.openLate ? 'Open till late' : null,
+			venue.openLate && !venue.temporarilyClosed ? 'Open till late' : null,
 			ergoLabel(venue.workInfo.ergonomic_index),
 			...(venue.workInfo.lighting ?? []).map((type) => lightingLabel(type)),
 			...amenityLabels(venue.workInfo),
@@ -54,13 +54,17 @@
 				<h2 class="text-lg font-medium tracking-tight group-hover:underline">{venue.name}</h2>
 				<p class="mt-0.5 text-sm text-muted">{venue.district}</p>
 			</div>
-			<StatusBadge status={venue.open ? 'open' : 'closed'} alert={venue.alerts.length > 0} />
+			<StatusBadge status={venue.open ? 'open' : 'closed'} alert={venue.alerts.length > 0 && !venue.temporarilyClosed} />
 		</div>
 
 		<p class="mt-4 text-sm tabular-nums text-muted">
-			{hoursLabel(venue.openingHours)}
-			{#if venue.openLate}
-				<span class="text-ink"> · Late</span>
+			{#if venue.temporarilyClosed}
+				{temporaryClosureLabel(venue.reopensAt)}
+			{:else}
+				{hoursLabel(venue.openingHours)}
+				{#if venue.openLate}
+					<span class="text-ink"> · Late</span>
+				{/if}
 			{/if}
 		</p>
 

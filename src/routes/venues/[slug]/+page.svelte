@@ -28,6 +28,7 @@
 		formatMauritiusWhen,
 		formatSpecialWhen,
 		hoursLabel,
+		temporaryClosureLabel,
 		lightingLabel,
 		mapsUrl,
 		noiseLabel,
@@ -175,12 +176,16 @@
 		</p>
 	</div>
 	<div class="text-left sm:text-right">
-		<StatusBadge status={venue.open ? 'open' : 'closed'} alert={venue.alerts.length > 0} />
+		<StatusBadge status={venue.open ? 'open' : 'closed'} alert={venue.alerts.length > 0 && !venue.temporarilyClosed} />
 		<p class="mt-2 text-sm tabular-nums text-muted">
 			<Clock class="mr-1 inline size-3.5 align-[-2px]" />
-			{hoursLabel(venue.openingHours)}
-			{#if venue.openLate}
-				<span class="text-ink"> · Open till late</span>
+			{#if venue.temporarilyClosed}
+				{temporaryClosureLabel(venue.reopensAt)}
+			{:else}
+				{hoursLabel(venue.openingHours)}
+				{#if venue.openLate}
+					<span class="text-ink"> · Open till late</span>
+				{/if}
 			{/if}
 		</p>
 	</div>
@@ -317,6 +322,13 @@
 
 		<section>
 			<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Hours</h3>
+			{#if venue.temporarilyClosed}
+				<p class="mt-3 text-sm">
+					{venue.reopensAt
+						? 'Regular hours resume after the expected reopen time.'
+						: 'Regular hours are paused while this closure is in effect.'}
+				</p>
+			{/if}
 			<ul class="mt-4 divide-y divide-line border-y border-line text-sm">
 				{#each orderedWeekdays() as day (day)}
 					{@const slot = venue.openingHours[day]}

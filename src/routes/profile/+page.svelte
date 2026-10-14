@@ -38,6 +38,11 @@
 				Alerts
 			</a>
 		{/if}
+		{#if data.canReportClosure}
+			<a href="/admin/closure" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
+				Temporary closure
+			</a>
+		{/if}
 		{#if data.hasPassword}
 			<button
 				type="button"

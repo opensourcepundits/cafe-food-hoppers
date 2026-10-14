@@ -3,7 +3,7 @@ import { deleteVenue, getVenueById, setVenueBadges, updateVenue } from '$lib/ser
 import { isUniqueViolation, payloadFromForm } from '$lib/server/venue-input';
 import { filesFromForm, persistVenueImages, removeImagePaths } from '$lib/server/storage';
 import { canDeleteVenue, isSuperuser, requireVenueEditor } from '$lib/server/access';
-import { datetimeLocalToIso } from '$lib/venue';
+import { datetimeLocalToIso, type Announcement } from '$lib/venue';
 import { dispatchDueEvents, dispatchPromotionsNow } from '$lib/server/push';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -37,7 +37,11 @@ export const actions: Actions = {
 				current.images,
 				parsed.value.slug || current.slug
 			);
-			const venue = await updateVenue(params.id, { ...parsed.value, images });
+			const venue = await updateVenue(params.id, {
+				...parsed.value,
+				announcements: keepStoredClosures(current.announcements, parsed.value.announcements),
+				images
+			});
 			if (!venue) error(404, 'Place not found.');
 			await dispatchPromotionsNow(venue.id, parsed.promoteNow);
 			await dispatchDueEvents(venue.id);
@@ -76,6 +80,12 @@ export const actions: Actions = {
 		redirect(303, '/admin?deleted=1');
 	}
 };
+
+function keepStoredClosures(stored: Announcement[], submitted: Announcement[]): Announcement[] {
+	const closures = stored.filter((item) => item.type === 'closure');
+	const rest = submitted.filter((item) => item.type !== 'closure');
+	return [...rest, ...closures];
+}
 
 function mbps(value: FormDataEntryValue | null): number | null {
 	const text = String(value ?? '').trim();

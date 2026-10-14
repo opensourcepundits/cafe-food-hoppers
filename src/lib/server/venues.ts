@@ -6,7 +6,9 @@ import type { AuthUser } from '$lib/server/auth';
 import type { VenueWrite } from '$lib/server/venue-input';
 import {
 	activeAnnouncements,
+	activeTemporaryClosure,
 	alertTiming,
+	temporaryClosureLabel,
 	isWorkFriendly,
 	distanceMeters,
 	isOpenNow,
@@ -365,10 +367,13 @@ async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
 }
 
 export function withLiveState(venue: Venue): LiveVenue {
+	const closure = activeTemporaryClosure(venue.announcements);
 	return {
 		...venue,
-		open: isOpenNow(venue.openingHours),
+		open: !closure && isOpenNow(venue.openingHours),
 		openLate: isOpenTillLate(venue.openingHours),
+		temporarilyClosed: Boolean(closure),
+		reopensAt: closure?.ends_at ?? null,
 		workFriendly: isWorkFriendly(venue.workInfo),
 		walkMeters: null,
 		alerts: activeAnnouncements(venue.announcements),
@@ -393,6 +398,7 @@ function toMapPlace(venue: LiveVenue, pin: { lat: number; lng: number }, rating:
 		...amenityLabels(venue.workInfo)
 	].filter((value): value is string => Boolean(value));
 
+	const notices = venue.alerts.filter((item) => item.type !== 'closure');
 	return {
 		id: venue.id,
 		name: venue.name,
@@ -402,8 +408,8 @@ function toMapPlace(venue: LiveVenue, pin: { lat: number; lng: number }, rating:
 		lng: pin.lng,
 		open: venue.open,
 		openLate: venue.openLate,
-		hours: hoursLabel(venue.openingHours),
-		closes: closingTime(venue.openingHours),
+		hours: venue.temporarilyClosed ? temporaryClosureLabel(venue.reopensAt) : hoursLabel(venue.openingHours),
+		closes: venue.temporarilyClosed ? null : closingTime(venue.openingHours),
 		wifi: wifiLabel(venue.workInfo),
 		specialPulse: specialPulse(venue.ongoingSpecials, venue.upcomingSpecials),
 		noise: noiseLabel(venue.workInfo.noise_level),
@@ -411,8 +417,8 @@ function toMapPlace(venue: LiveVenue, pin: { lat: number; lng: number }, rating:
 		parking: venue.workInfo.parking?.trim() || null,
 		bits: bits.slice(0, 5),
 		special: venue.ongoingSpecials[0]?.title ?? venue.upcomingSpecials[0]?.title ?? null,
-		alert: venue.alerts.length > 0,
-		alertTitles: venue.alerts.map((item) => item.title.trim()).filter(Boolean),
+		alert: notices.length > 0,
+		alertTitles: notices.map((item) => item.title.trim()).filter(Boolean),
 		isFeatured: venue.isFeatured,
 		featuredPriority: venue.featuredPriority,
 		ratingAverage: rating.average,

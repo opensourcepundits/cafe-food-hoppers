@@ -181,6 +181,9 @@
 			<Clock class="mr-1 inline size-3.5 align-[-2px]" />
 			{#if venue.temporarilyClosed}
 				{temporaryClosureLabel(venue.reopensAt)}
+				{#if venue.closureReason}
+					<span class="mt-1 block text-ink">{venue.closureReason}</span>
+				{/if}
 			{:else}
 				{hoursLabel(venue.openingHours)}
 				{#if venue.openLate}

@@ -1,12 +1,16 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { favourites, venues } from '$lib/server/db/schema';
+import { activeTemporaryClosure, closureNote } from '$lib/venue';
 
 export type FavouritePlace = {
 	id: string;
 	name: string;
 	slug: string;
 	district: string;
+	temporarilyClosed: boolean;
+	reopensAt: string | null;
+	closureReason: string | null;
 };
 
 export async function isFavourite(userId: string, venueId: string): Promise<boolean> {
@@ -34,11 +38,24 @@ export async function listFavourites(userId: string): Promise<FavouritePlace[]> 
 			id: venues.id,
 			name: venues.name,
 			slug: venues.slug,
-			district: venues.district
+			district: venues.district,
+			announcements: venues.announcements
 		})
 		.from(favourites)
 		.innerJoin(venues, eq(favourites.venueId, venues.id))
 		.where(eq(favourites.userId, userId))
 		.orderBy(desc(favourites.createdAt));
-	return rows;
+	return rows.map((row) => {
+		const closure = activeTemporaryClosure(row.announcements ?? []);
+		const reason = closure ? closureNote(closure.body) : '';
+		return {
+			id: row.id,
+			name: row.name,
+			slug: row.slug,
+			district: row.district,
+			temporarilyClosed: Boolean(closure),
+			reopensAt: closure?.ends_at ?? null,
+			closureReason: reason || null
+		};
+	});
 }

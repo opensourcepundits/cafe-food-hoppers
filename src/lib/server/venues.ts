@@ -8,6 +8,7 @@ import {
 	activeAnnouncements,
 	activeTemporaryClosure,
 	alertTiming,
+	closureNote,
 	temporaryClosureLabel,
 	isWorkFriendly,
 	distanceMeters,
@@ -368,12 +369,14 @@ async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
 
 export function withLiveState(venue: Venue): LiveVenue {
 	const closure = activeTemporaryClosure(venue.announcements);
+	const reason = closure ? closureNote(closure.body) : '';
 	return {
 		...venue,
 		open: !closure && isOpenNow(venue.openingHours),
 		openLate: isOpenTillLate(venue.openingHours),
 		temporarilyClosed: Boolean(closure),
 		reopensAt: closure?.ends_at ?? null,
+		closureReason: reason || null,
 		workFriendly: isWorkFriendly(venue.workInfo),
 		walkMeters: null,
 		alerts: activeAnnouncements(venue.announcements),

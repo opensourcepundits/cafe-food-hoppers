@@ -4,10 +4,21 @@
 
 	let { data, form } = $props();
 	const field = 'w-full border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink';
-	let venueId = $state(untrack(() => form?.venueId || data.selectedId));
+	let venueId = $state(untrack(() => form?.venueId ?? data.selectedId ?? ''));
+	let indefinite = $state(false);
+	let indefiniteFor = $state('');
 
 	const current = $derived(data.closures.find((item) => item.venueId === venueId) ?? null);
 	const preset = $derived(form?.venueId === venueId ? form : null);
+
+	$effect(() => {
+		const id = venueId;
+		if (indefiniteFor === id) return;
+		indefiniteFor = id;
+		const failed = form?.venueId === id ? form : null;
+		const closed = data.closures.find((item) => item.venueId === id) ?? null;
+		indefinite = failed ? failed.indefinite === '1' : Boolean(closed && !closed.endsAt);
+	});
 </script>
 
 <svelte:head>
@@ -18,7 +29,7 @@
 <section class="mb-10 max-w-xl">
 	<h3 class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Temporary closure</h3>
 	<p class="mt-3 text-sm leading-6 text-muted">
-		Close a place immediately, and set when it is expected to open again. Regular hours apply after that time. Times are Indian/Mauritius.
+		Close a place immediately. Set when it is expected to open again, or leave it closed indefinitely. Times are Indian/Mauritius.
 	</p>
 	{#if form?.error}
 		<p class="mt-3 text-sm text-accent">{form.error}</p>
@@ -37,7 +48,13 @@
 		</p>
 	{/if}
 	{#if data.updated}
-		<p class="mt-3 text-sm">Reopen time updated. The place stays closed until then.</p>
+		<p class="mt-3 text-sm">
+			{#if data.indefinite}
+				The place stays closed until you reopen it.
+			{:else}
+				Reopen time updated. The place stays closed until then.
+			{/if}
+		</p>
 	{/if}
 	{#if data.reopened}
 		<p class="mt-3 text-sm">Place marked open again. Regular hours apply.</p>
@@ -56,7 +73,11 @@
 		{#key venueId}
 			<form method="POST" action="?/close" class="mt-3 grid gap-3">
 				<input type="hidden" name="venueId" value={venueId} />
-				<label class="block">
+				<label class="flex items-center gap-2 text-sm">
+					<input type="checkbox" name="indefinite" value="1" bind:checked={indefinite} />
+					Indefinite
+				</label>
+				<label class="block" class:opacity-50={indefinite}>
 					<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
 						Expected to open again
 					</span>
@@ -64,16 +85,21 @@
 						class={field}
 						type="datetime-local"
 						name="reopens"
-						required
+						required={!indefinite}
+						disabled={indefinite}
 						value={preset?.reopens ?? isoToDatetimeLocal(current?.endsAt)}
 					/>
 				</label>
 				<label class="block">
-					<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Note</span>
-					<textarea class="{field} min-h-24" name="note" maxlength="400">{preset?.note ?? current?.note ?? ''}</textarea>
+					<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Reason</span>
+					<textarea class="{field} min-h-24" name="note" maxlength="400" placeholder="Why is this place closed?"
+						>{preset?.note ?? current?.note ?? ''}</textarea
+					>
 				</label>
 				<p class="text-sm text-muted">
-					{#if current}
+					{#if indefinite}
+						The place stays closed until you reopen it. The reason is shown on the place and on saved profiles.
+					{:else if current}
 						This place is already temporarily closed. Saving changes the expected reopen time.
 					{:else}
 						Saving closes the place now. People who saved it are notified the first time you report the closure.
@@ -103,7 +129,7 @@
 							{#if closure.endsAt}
 								Expected open {formatMauritiusWhen(closure.endsAt)}
 							{:else}
-								Temporarily closed, with no reopen time
+								Closed indefinitely
 							{/if}
 						</p>
 						{#if closure.note}

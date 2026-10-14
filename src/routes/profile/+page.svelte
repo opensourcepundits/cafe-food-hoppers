@@ -127,11 +127,25 @@
 	{:else}
 		<ul class="mt-3 divide-y divide-line border-y border-line text-sm">
 			{#each data.favourites as place (place.id)}
-				<li class="flex items-baseline justify-between gap-3 py-2">
-					<a href="/venues/{place.slug}" class="underline decoration-line underline-offset-4 hover:text-ink">
-						{place.name}
-					</a>
-					<span class="text-muted">{place.district}</span>
+				<li class="py-3">
+					<div class="flex items-baseline justify-between gap-3">
+						<a href="/venues/{place.slug}" class="underline decoration-line underline-offset-4 hover:text-ink">
+							{place.name}
+						</a>
+						<span class="text-muted">{place.district}</span>
+					</div>
+					{#if place.temporarilyClosed}
+						{#if place.closureReason}
+							<p class="mt-1 text-sm text-ink">{place.closureReason}</p>
+						{/if}
+						<p class="mt-0.5 text-sm text-muted">
+							{#if place.reopensAt}
+								Expected open {formatMauritiusWhen(place.reopensAt)}
+							{:else}
+								Closed indefinitely
+							{/if}
+						</p>
+					{/if}
 				</li>
 			{/each}
 		</ul>

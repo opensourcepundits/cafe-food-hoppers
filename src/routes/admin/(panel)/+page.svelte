@@ -66,7 +66,9 @@
 							{#if closure}
 								<p class="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-closed">
 									Closed{#if closure.ends_at}
-										· open {formatMauritiusWhen(closure.ends_at)}{/if}
+										· open {formatMauritiusWhen(closure.ends_at)}
+									{:else}
+										· indefinite{/if}
 								</p>
 							{/if}
 						</td>

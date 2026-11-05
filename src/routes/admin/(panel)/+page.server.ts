@@ -1,10 +1,7 @@
 import { redirect } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
 import { listVenuesAdmin } from '$lib/server/venues';
 import { clearAdminSession } from '$lib/server/auth';
 import { canCreateVenue, canEditVenue } from '$lib/server/access';
-import { db } from '$lib/server/db';
-import { franchises, venues } from '$lib/server/db/schema';
 import type { Actions, PageServerLoad } from './$types';
 
 function intro(role: string, scopeName: string | null, canCreate: boolean, canEdit: boolean): string {
@@ -12,9 +9,7 @@ function intro(role: string, scopeName: string | null, canCreate: boolean, canEd
 		return 'Every place on the site. Edit a listing, post an alert, or report a closure.';
 	}
 	if (role === 'franchise_manager') {
-		return scopeName
-			? `Places in ${scopeName}. Edit a listing, post an alert, or report a closure.`
-			: 'No franchise is assigned to this account yet. A superuser assigns one from Users.';
+		return 'Places assigned to this account. Edit a listing, post an alert, or report a closure.';
 	}
 	if (role === 'place_manager') {
 		return scopeName
@@ -39,35 +34,12 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			})
 		: listed;
 
-	let scopeName: string | null = null;
-	if (role === 'franchise_manager' && user?.franchiseId) {
-		const [franchise] = await db
-			.select({ name: franchises.name })
-			.from(franchises)
-			.where(eq(franchises.id, user.franchiseId))
-			.limit(1);
-		scopeName = franchise?.name ?? null;
-	} else if (role === 'place_manager') {
-		scopeName = listed[0]?.name ?? null;
-	}
-
-	const franchiseByVenue = new Map<string, string | null>();
-	if (role === 'superuser') {
-		const [groups, links] = await Promise.all([
-			db.select({ id: franchises.id, name: franchises.name }).from(franchises),
-			db.select({ id: venues.id, franchiseId: venues.franchiseId }).from(venues)
-		]);
-		const names = new Map(groups.map((group) => [group.id, group.name]));
-		for (const link of links) {
-			franchiseByVenue.set(link.id, link.franchiseId ? (names.get(link.franchiseId) ?? null) : null);
-		}
-	}
+	const scopeName = role === 'place_manager' ? (listed[0]?.name ?? null) : null;
 
 	return {
 		venues: filtered.map((venue) => ({
 			...venue,
-			editable: canEditVenue(user, venue),
-			franchiseName: franchiseByVenue.get(venue.id) ?? null
+			editable: canEditVenue(user, venue)
 		})),
 		q,
 		total: listed.length,

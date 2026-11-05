@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-	<title>Alerts — Place</title>
+	<title>Alerts — Places</title>
 	<meta
 		name="description"
 		content="Ongoing and upcoming alerts from cafes across Mauritius — Grand Baie, Ebène, Tamarin, Port Louis, and Moka."

@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-	<title>New place — Admin</title>
+	<title>New place — My places</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 

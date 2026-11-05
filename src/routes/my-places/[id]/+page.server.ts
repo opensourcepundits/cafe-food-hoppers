@@ -45,7 +45,7 @@ export const actions: Actions = {
 			if (!venue) error(404, 'Place not found.');
 			await dispatchPromotionsNow(venue.id, parsed.promoteNow);
 			await dispatchDueEvents(venue.id);
-			redirect(303, `/admin/venues/${params.id}?saved=1`);
+			redirect(303, `/my-places/${params.id}?saved=1`);
 		} catch (cause) {
 			if (isRedirect(cause) || isHttpError(cause)) throw cause;
 			if (isUniqueViolation(cause)) return fail(400, { error: 'That slug is already taken.' });
@@ -67,7 +67,7 @@ export const actions: Actions = {
 			wifiUploadMbps: mbps(data.get('wifiUploadMbps'))
 		});
 		if (!venue) error(404, 'Place not found.');
-		redirect(303, `/admin/venues/${params.id}?badges=1`);
+		redirect(303, `/my-places/${params.id}?badges=1`);
 	},
 	delete: async ({ params, locals }) => {
 		const existing = await getVenueById(params.id);
@@ -77,7 +77,7 @@ export const actions: Actions = {
 		const venue = await getVenueById(params.id);
 		if (venue) await removeImagePaths(venue.images.map((image) => image.path));
 		await deleteVenue(params.id);
-		redirect(303, '/admin?deleted=1');
+		redirect(303, '/my-places?deleted=1');
 	}
 };
 

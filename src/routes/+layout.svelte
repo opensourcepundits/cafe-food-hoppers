@@ -15,11 +15,7 @@
 	const signedInName = $derived(
 		data.user?.firstName?.trim() || data.user?.email.split('@')[0] || ''
 	);
-	const accountHref = $derived(
-		data.user?.role === 'place_manager' || data.user?.role === 'franchise_manager' || data.user?.role === 'superuser'
-			? '/admin'
-			: '/profile'
-	);
+	const accountHref = '/profile';
 
 	onMount(() => {
 		const onSubmit = (event: Event) => {
@@ -46,7 +42,7 @@
 	<meta name="mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-	<meta name="apple-mobile-web-app-title" content="Place" />
+	<meta name="apple-mobile-web-app-title" content="Places" />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
@@ -61,7 +57,7 @@
 			<div class="flex min-w-0 items-end gap-4">
 				<a href="/" class="group">
 					<p class="font-mono text-[11px] uppercase tracking-[0.28em] text-muted">Mauritius</p>
-					<h1 class="mt-1 text-2xl font-semibold tracking-tight">Place</h1>
+					<h1 class="mt-1 text-2xl font-semibold tracking-tight">Places</h1>
 				</a>
 				{#if data.siteStatus.active}
 					{#key data.siteStatus.severity + data.siteStatus.text}
@@ -91,6 +87,14 @@
 						: 'border-transparent text-muted hover:text-ink'}"
 				>
 					Alerts
+				</a>
+				<a
+					href="/my-places"
+					class="border-b pb-0.5 {path.startsWith('/my-places')
+						? 'border-ink text-ink'
+						: 'border-transparent text-muted hover:text-ink'}"
+				>
+					My places
 				</a>
 				{#if signedInName}
 					<a

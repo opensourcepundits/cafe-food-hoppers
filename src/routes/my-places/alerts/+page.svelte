@@ -12,7 +12,7 @@
 </script>
 
 <svelte:head>
-	<title>Alerts — Admin</title>
+	<title>Alerts — My places</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 

@@ -10,7 +10,7 @@
 </script>
 
 <svelte:head>
-	<title>Sign in — Place</title>
+	<title>Sign in — Places</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 

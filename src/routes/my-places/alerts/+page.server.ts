@@ -13,7 +13,7 @@ import type { Actions, PageServerLoad } from './$types';
 const TYPES = new Set<AnnouncementType>(['notice', 'event', 'closure', 'alert']);
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (!locals.user) redirect(303, '/login?next=/admin/alerts');
+	if (!locals.user) redirect(303, '/login?next=/my-places/alerts');
 	if (!canManagePlaces(locals.user)) error(403, 'You cannot manage alerts.');
 	const venues = (await listVenuesAdmin(locals.user)).filter((venue) => canPostAlert(locals.user, venue));
 	const alerts = venues.flatMap((venue) =>
@@ -41,7 +41,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
-		if (!locals.user) redirect(303, '/login?next=/admin/alerts');
+		if (!locals.user) redirect(303, '/login?next=/my-places/alerts');
 		if (!canManagePlaces(locals.user)) error(403, 'You cannot manage alerts.');
 		const data = await request.formData();
 		const venue = await getVenueById(String(data.get('venueId') ?? ''));
@@ -66,10 +66,10 @@ export const actions: Actions = {
 		const saved = await setVenueAnnouncements(venue.id, [...venue.announcements, alert]);
 		if (!saved) error(404, 'Place not found.');
 		const notice = await dispatchPostedAnnouncement(saved.id, alert, locals.user.id);
-		redirect(303, `/admin/alerts?created=1&notice=${notice}`);
+		redirect(303, `/my-places/alerts?created=1&notice=${notice}`);
 	},
 	cancel: async ({ request, locals }) => {
-		if (!locals.user) redirect(303, '/login?next=/admin/alerts');
+		if (!locals.user) redirect(303, '/login?next=/my-places/alerts');
 		if (!canManagePlaces(locals.user)) error(403, 'You cannot manage alerts.');
 		const data = await request.formData();
 		const venue = await getVenueById(String(data.get('venueId') ?? ''));
@@ -77,11 +77,11 @@ export const actions: Actions = {
 		const alertId = String(data.get('alertId') ?? '');
 		const current = venue.announcements.find((item) => item.id === alertId);
 		if (!current) return fail(404, { error: 'That alert is no longer there.' });
-		if (alertTiming(current) === 'done') redirect(303, '/admin/alerts');
+		if (alertTiming(current) === 'done') redirect(303, '/my-places/alerts');
 		const ended = new Date(Date.now() - 1000).toISOString();
 		const next = venue.announcements.map((item) => (item.id === alertId ? { ...item, ends_at: ended } : item));
 		const saved = await setVenueAnnouncements(venue.id, next);
 		if (!saved) error(404, 'Place not found.');
-		redirect(303, '/admin/alerts?cancelled=1');
+		redirect(303, '/my-places/alerts?cancelled=1');
 	}
 };

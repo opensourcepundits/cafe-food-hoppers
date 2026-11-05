@@ -1067,6 +1067,6 @@
 
 	<div class="sticky bottom-0 flex gap-3 border-t border-line bg-paper py-4">
 		<button type="submit" class="border border-ink bg-ink px-5 py-2 text-sm text-paper">Save place</button>
-		<a href="/admin" class="border border-line px-5 py-2 text-sm text-muted hover:text-ink">Cancel</a>
+		<a href="/my-places" class="border border-line px-5 py-2 text-sm text-muted hover:text-ink">Cancel</a>
 	</div>
 </form>

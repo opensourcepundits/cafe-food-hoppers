@@ -13,7 +13,7 @@
 </script>
 
 <svelte:head>
-	<title>Edit {data.venue.name} — Admin</title>
+	<title>Edit {data.venue.name} — My places</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 

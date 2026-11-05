@@ -114,7 +114,7 @@
 			<ul class="mt-2 divide-y divide-line border-y border-line text-sm">
 				{#each assigned as place (place.id)}
 					<li class="flex items-baseline justify-between gap-3 py-2">
-						<a href="/admin/venues/{place.id}" class="underline decoration-line underline-offset-4 hover:text-ink">
+						<a href="/my-places/{place.id}" class="underline decoration-line underline-offset-4 hover:text-ink">
 							{place.name}
 						</a>
 						<span class="text-muted">{place.district}</span>

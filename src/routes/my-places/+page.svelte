@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Admin — Place</title>
+	<title>My places — Places</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
@@ -30,7 +30,7 @@
 		/>
 		<button type="submit" class="border border-ink bg-ink px-4 py-2 text-sm text-paper">Search</button>
 		{#if data.q}
-			<a href="/admin" class="border border-line px-4 py-2 text-sm text-muted">Clear</a>
+			<a href="/my-places" class="border border-line px-4 py-2 text-sm text-muted">Clear</a>
 		{/if}
 	</form>
 {/if}
@@ -48,7 +48,7 @@
 		{:else if data.role === 'place_manager' || data.role === 'franchise_manager'}
 			Nothing is assigned to this account yet.
 		{:else if data.canCreate}
-			No places yet. <a href="/admin/venues/new" class="underline decoration-line underline-offset-4">Add one</a>.
+			No places yet. <a href="/my-places/new" class="underline decoration-line underline-offset-4">Add one</a>.
 		{:else if data.canManage}
 			No places are assigned to this account.
 		{:else}
@@ -75,13 +75,13 @@
 		</p>
 		<div class="mt-4 flex flex-wrap gap-2">
 			{#if venue.editable}
-				<a href="/admin/venues/{venue.id}" class="border border-ink bg-ink px-4 py-2 text-sm text-paper">Edit</a>
+				<a href="/my-places/{venue.id}" class="border border-ink bg-ink px-4 py-2 text-sm text-paper">Edit</a>
 			{/if}
 			{#if data.canManage}
-				<a href="/admin/alerts?venue={venue.id}" class="border border-line px-4 py-2 text-sm hover:border-ink">Alerts</a>
+				<a href="/my-places/alerts?venue={venue.id}" class="border border-line px-4 py-2 text-sm hover:border-ink">Alerts</a>
 			{/if}
 			{#if data.canReportClosure && venue.editable}
-				<a href="/admin/closure?venue={venue.id}" class="border border-line px-4 py-2 text-sm hover:border-ink">
+				<a href="/my-places/closure?venue={venue.id}" class="border border-line px-4 py-2 text-sm hover:border-ink">
 					Closure
 				</a>
 			{/if}
@@ -133,7 +133,7 @@
 								</a>
 								{#if data.canManage && venue.editable}
 									<a
-										href="/admin/alerts?venue={venue.id}"
+										href="/my-places/alerts?venue={venue.id}"
 										class="font-mono text-[11px] uppercase tracking-[0.14em] underline decoration-line underline-offset-4"
 									>
 										Alerts
@@ -141,7 +141,7 @@
 								{/if}
 								{#if data.canReportClosure && venue.editable}
 									<a
-										href="/admin/closure?venue={venue.id}"
+										href="/my-places/closure?venue={venue.id}"
 										class="font-mono text-[11px] uppercase tracking-[0.14em] underline decoration-line underline-offset-4"
 									>
 										Closure
@@ -149,7 +149,7 @@
 								{/if}
 								{#if venue.editable}
 									<a
-										href="/admin/venues/{venue.id}"
+										href="/my-places/{venue.id}"
 										class="font-mono text-[11px] uppercase tracking-[0.14em] underline decoration-line underline-offset-4"
 									>
 										Edit

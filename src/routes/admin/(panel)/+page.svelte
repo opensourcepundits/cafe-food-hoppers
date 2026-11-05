@@ -71,7 +71,7 @@
 			</p>
 		{/if}
 		<p class="mt-4 text-sm text-muted">
-			{venue.menu.reduce((sum, category) => sum + category.items.length, 0)} menu items · {venue.specials.length} specials
+			{venue.menu.reduce((sum, category) => sum + (category.items?.length ?? 0), 0)} menu items · {venue.specials.length} specials
 		</p>
 		<div class="mt-4 flex flex-wrap gap-2">
 			{#if venue.editable}
@@ -109,9 +109,6 @@
 						<td class="px-4 py-3">
 							<p class="font-medium">{venue.name}</p>
 							<p class="font-mono text-[11px] text-muted">/{venue.slug}</p>
-							{#if data.role === 'superuser' && venue.franchiseName}
-								<p class="mt-1 text-xs text-muted">{venue.franchiseName}</p>
-							{/if}
 							{#if closure}
 								<p class="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-closed">
 									Closed{#if closure.ends_at}
@@ -123,7 +120,7 @@
 						</td>
 						<td class="px-4 py-3 text-muted">{venue.district}</td>
 						<td class="px-4 py-3 tabular-nums text-muted">
-							{venue.menu.reduce((sum, category) => sum + category.items.length, 0)}
+							{venue.menu.reduce((sum, category) => sum + (category.items?.length ?? 0), 0)}
 						</td>
 						<td class="px-4 py-3 tabular-nums text-muted">{venue.specials.length}</td>
 						<td class="px-4 py-3 text-right">

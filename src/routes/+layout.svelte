@@ -6,6 +6,7 @@
 	import AddToHomeScreen from '$lib/components/AddToHomeScreen.svelte';
 	import EmergencyMeeting from '$lib/components/EmergencyMeeting.svelte';
 	import NotificationNudge from '$lib/components/NotificationNudge.svelte';
+	import SiteStatusTag from '$lib/components/SiteStatusTag.svelte';
 	import { dropThisDevice } from '$lib/push-client';
 
 	let { children, data } = $props();
@@ -56,11 +57,18 @@
 
 <div class="min-h-screen">
 	<header class="border-b border-line">
-		<div class="mx-auto flex max-w-6xl items-end justify-between gap-6 px-4 py-5 sm:px-6">
-			<a href="/" class="group">
-				<p class="font-mono text-[11px] uppercase tracking-[0.28em] text-muted">Mauritius</p>
-				<h1 class="mt-1 text-2xl font-semibold tracking-tight">Place</h1>
-			</a>
+		<div class="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-6 gap-y-3 px-4 py-5 sm:px-6">
+			<div class="flex min-w-0 items-end gap-4">
+				<a href="/" class="group">
+					<p class="font-mono text-[11px] uppercase tracking-[0.28em] text-muted">Mauritius</p>
+					<h1 class="mt-1 text-2xl font-semibold tracking-tight">Place</h1>
+				</a>
+				{#if data.siteStatus.active}
+					{#key data.siteStatus.severity + data.siteStatus.text}
+						<SiteStatusTag text={data.siteStatus.text} severity={data.siteStatus.severity} />
+					{/key}
+				{/if}
+			</div>
 			<nav class="flex gap-5 font-mono text-[11px] uppercase tracking-[0.18em]">
 				<a
 					href="/"

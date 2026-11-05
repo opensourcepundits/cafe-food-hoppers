@@ -47,7 +47,7 @@
 				<span class="mb-1 block font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Place</span>
 				<select class={field} name="venueId" required>
 					{#each data.places as place (place.id)}
-						<option value={place.id}>{place.name}</option>
+						<option value={place.id} selected={place.id === data.selectedId}>{place.name}</option>
 					{/each}
 				</select>
 			</label>

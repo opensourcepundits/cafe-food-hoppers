@@ -33,7 +33,6 @@
 	let meetCircle: Circle | undefined;
 	let radiusKey = '';
 	let locateError = $state('');
-	let fullscreen = $state(false);
 	let reportView: ((frame: MapFrame) => void) | undefined;
 	let reportSelect: ((place: MapPlace | null) => void) | undefined;
 	let fittedKey = '';
@@ -319,26 +318,6 @@
 		map.setView(marker.getLatLng(), zoom, { animate: false });
 	}
 
-	function toggleMap() {
-		fullscreen = !fullscreen;
-	}
-
-	$effect(() => {
-		const active = fullscreen;
-		void tick().then(() => map?.invalidateSize());
-		if (!active || typeof document === 'undefined') return;
-		const previous = document.body.style.overflow;
-		document.body.style.overflow = 'hidden';
-		const onKey = (event: KeyboardEvent) => {
-			if (event.key === 'Escape') fullscreen = false;
-		};
-		window.addEventListener('keydown', onKey);
-		return () => {
-			document.body.style.overflow = previous;
-			window.removeEventListener('keydown', onKey);
-		};
-	});
-
 	export function focus(id: string) {
 		const marker = markers.get(id);
 		if (!map || !marker) return;
@@ -424,11 +403,8 @@
 
 </script>
 
-<div class="relative isolate {fullscreen ? 'fixed inset-0 z-30 bg-paper' : 'z-0'}">
-	<div
-		bind:this={root}
-		class="relative z-0 w-full bg-paper-2 {fullscreen ? 'h-full' : 'h-[min(70vh,640px)] border border-line'}"
-	></div>
+<div class="relative z-0">
+	<div bind:this={root} class="relative z-0 h-[min(70vh,640px)] w-full border border-line bg-paper-2"></div>
 	{#if meet}
 		<div
 			class="absolute top-3 left-3 z-20 flex gap-1"
@@ -455,16 +431,6 @@
 		onclick={goHere}
 	>
 		Your location
-	</button>
-	<button
-		type="button"
-		class="absolute right-3 z-30 border border-ink bg-paper px-2.5 py-1.5 text-xs shadow-[2px_2px_0_0_var(--color-ink)] {fullscreen
-			? 'bottom-[max(5rem,calc(env(safe-area-inset-bottom)+4.5rem))]'
-			: 'bottom-3'}"
-		aria-pressed={fullscreen}
-		onclick={toggleMap}
-	>
-		{fullscreen ? 'Regular' : 'Full screen'}
 	</button>
 	{#if locateError}
 		<p class="absolute top-14 right-3 z-[500] max-w-56 border border-accent bg-paper px-3 py-2 text-xs text-accent">
@@ -726,10 +692,6 @@
 
 	:global(.meet-active .leaflet-top.leaflet-left) {
 		top: 3.25rem;
-	}
-
-	:global(.leaflet-bottom.leaflet-right) {
-		margin-bottom: 2.5rem;
 	}
 
 	:global(.leaflet-control-attribution) {

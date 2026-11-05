@@ -22,7 +22,7 @@ sw.addEventListener('activate', (event) => {
 
 sw.addEventListener('push', (event) => {
 	const data = readPayload(event);
-	const title = data.title?.trim() || 'Place';
+	const title = data.title?.trim() || 'Places';
 	const path = safePath(data.url);
 	event.waitUntil(
 		sw.registration.showNotification(title, {

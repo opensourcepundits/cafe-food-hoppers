@@ -80,7 +80,7 @@
 </script>
 
 <svelte:head>
-	<title>{venue.name} — Place</title>
+	<title>{venue.name} — Places</title>
 	<meta name="description" content="{venue.name} in {venue.district}. Hours, menu, and work setup." />
 </svelte:head>
 

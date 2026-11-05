@@ -1,6 +1,6 @@
 {
-	"name": "Place",
-	"short_name": "Place",
+	"name": "Places",
+	"short_name": "Places",
 	"description": "Places in Mauritius for work and coffee.",
 	"start_url": "/",
 	"scope": "/",

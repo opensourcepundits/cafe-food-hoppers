@@ -24,7 +24,7 @@ export const actions: Actions = {
 			const venue = await createVenue({ ...parsed.value, images }, user.id);
 			await dispatchPromotionsNow(venue.id, parsed.promoteNow);
 			await dispatchDueEvents(venue.id);
-			redirect(303, `/admin/venues/${venue.id}?saved=1`);
+			redirect(303, `/my-places/${venue.id}?saved=1`);
 		} catch (cause) {
 			if (isRedirect(cause)) throw cause;
 			console.error(cause);

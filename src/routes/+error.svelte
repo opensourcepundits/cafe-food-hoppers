@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-	<title>{page.status} — Place</title>
+	<title>{page.status} — Places</title>
 </svelte:head>
 
 <section class="max-w-lg py-12">

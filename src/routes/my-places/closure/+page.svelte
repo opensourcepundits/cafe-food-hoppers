@@ -22,7 +22,7 @@
 </script>
 
 <svelte:head>
-	<title>Temporary closure — Admin</title>
+	<title>Temporary closure — My places</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 

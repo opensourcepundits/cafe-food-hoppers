@@ -92,10 +92,10 @@
 </script>
 
 <svelte:head>
-	<title>Map — Place</title>
+	<title>Map — Places</title>
 	<meta
 		name="description"
-		content="Map of every cafe in the Place directory, pinned from each venue’s Google Maps link."
+		content="Map of every cafe in the Places directory, pinned from each venue’s Google Maps link."
 	/>
 </svelte:head>
 

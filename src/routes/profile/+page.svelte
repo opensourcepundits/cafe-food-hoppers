@@ -20,7 +20,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.name} — Place</title>
+	<title>{data.name} — Places</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
@@ -31,21 +31,16 @@
 	</div>
 	<div class="flex flex-wrap gap-2">
 		{#if data.canManage}
-			<a href="/admin" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
-				Manage places
-			</a>
-			<a href="/admin/alerts" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
-				Alerts
+			<a href="/my-places" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
+				My places
 			</a>
 		{/if}
 		{#if data.isSuperuser}
+			<a href="/admin/users" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
+				Users
+			</a>
 			<a href="/admin/status" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
 				Site status
-			</a>
-		{/if}
-		{#if data.canReportClosure}
-			<a href="/admin/closure" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
-				Temporary closure
 			</a>
 		{/if}
 		{#if data.hasPassword}
@@ -59,7 +54,7 @@
 		{:else}
 			<p class="border border-line px-4 py-2 text-sm text-muted">Signed in with Google</p>
 		{/if}
-		<form method="POST" action="/admin?/logout">
+		<form method="POST" action="/logout">
 			<button type="submit" class="border border-line px-4 py-2 text-sm text-muted hover:border-ink hover:text-ink">
 				Sign out
 			</button>

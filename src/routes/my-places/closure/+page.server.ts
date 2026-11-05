@@ -16,7 +16,7 @@ const NOTE_LIMIT = 400;
 const MESSAGE_LIMIT = 140;
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (!locals.user) redirect(303, '/login?next=/admin/closure');
+	if (!locals.user) redirect(303, '/login?next=/my-places/closure');
 	if (!canReportClosure(locals.user)) error(403, 'You cannot report a temporary closure.');
 	const venues = (await listVenuesAdmin(locals.user)).filter((venue) => canEditVenue(locals.user, venue));
 	const requested = url.searchParams.get('venue');
@@ -48,7 +48,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
 	close: async ({ request, locals }) => {
-		if (!locals.user) redirect(303, '/login?next=/admin/closure');
+		if (!locals.user) redirect(303, '/login?next=/my-places/closure');
 		if (!canReportClosure(locals.user)) error(403, 'You cannot report a temporary closure.');
 		const data = await request.formData();
 		const venueId = String(data.get('venueId') ?? '');
@@ -96,12 +96,12 @@ export const actions: Actions = {
 		const indefiniteFlag = reopens ? '' : '&indefinite=1';
 		if (!primary) {
 			const notice = await dispatchPostedAnnouncement(saved.id, createdAlert, locals.user.id);
-			redirect(303, `/admin/closure?venue=${venue.id}&closed=1&notice=${notice}`);
+			redirect(303, `/my-places/closure?venue=${venue.id}&closed=1&notice=${notice}`);
 		}
-		redirect(303, `/admin/closure?venue=${venue.id}&updated=1${indefiniteFlag}`);
+		redirect(303, `/my-places/closure?venue=${venue.id}&updated=1${indefiniteFlag}`);
 	},
 	reopen: async ({ request, locals }) => {
-		if (!locals.user) redirect(303, '/login?next=/admin/closure');
+		if (!locals.user) redirect(303, '/login?next=/my-places/closure');
 		if (!canReportClosure(locals.user)) error(403, 'You cannot report a temporary closure.');
 		const data = await request.formData();
 		const venue = await getVenueById(String(data.get('venueId') ?? ''));
@@ -113,7 +113,7 @@ export const actions: Actions = {
 		}
 		const current = venue.announcements.find((item) => item.id === closureId && item.type === 'closure');
 		if (!current) return fail(404, { error: 'That closure is no longer there.' });
-		if (alertTiming(current) === 'done') redirect(303, `/admin/closure?venue=${venue.id}`);
+		if (alertTiming(current) === 'done') redirect(303, `/my-places/closure?venue=${venue.id}`);
 		const ended = new Date(Date.now() - 1000).toISOString();
 		const next = venue.announcements.map((item) =>
 			item.type === 'closure' && alertTiming(item) === 'ongoing' ? { ...item, ends_at: ended } : item
@@ -121,6 +121,6 @@ export const actions: Actions = {
 		const saved = await setVenueAnnouncements(venue.id, next);
 		if (!saved) error(404, 'Place not found.');
 		const notice = await dispatchReopened(saved.id, closureId, message);
-		redirect(303, `/admin/closure?venue=${venue.id}&reopened=1&notice=${notice}`);
+		redirect(303, `/my-places/closure?venue=${venue.id}&reopened=1&notice=${notice}`);
 	}
 };

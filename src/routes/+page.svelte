@@ -6,7 +6,7 @@
 </script>
 
 <svelte:head>
-	<title>Place — Mauritius cafe index</title>
+	<title>Places — Mauritius cafe index</title>
 	<meta
 		name="description"
 		content="Find work-friendly cafes in Mauritius. Menus, live hours, specials, and venue alerts for Grand Baie, Ebène, Tamarin, Port Louis, and Moka."

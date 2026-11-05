@@ -26,8 +26,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	);
 	const byStart = (a: { starts_at: string }, b: { starts_at: string }) =>
 		Date.parse(a.starts_at) - Date.parse(b.starts_at);
+	const requested = url.searchParams.get('venue');
 	return {
 		places: venues.map((venue) => ({ id: venue.id, name: venue.name })),
+		selectedId: venues.some((venue) => venue.id === requested) ? requested : (venues[0]?.id ?? ''),
 		upcoming: alerts.filter((alert) => alert.status === 'upcoming').sort(byStart),
 		ongoing: alerts.filter((alert) => alert.status === 'ongoing').sort(byStart),
 		done: alerts.filter((alert) => alert.status === 'done').sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at)),

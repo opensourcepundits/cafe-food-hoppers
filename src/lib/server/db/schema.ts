@@ -13,6 +13,7 @@ import {
 	uuid,
 	type AnyPgColumn
 } from 'drizzle-orm/pg-core';
+import type { SiteSeverity } from '../../site-status';
 import type { Announcement, Contact, MenuCategory, OpeningHours, Special, WorkInfo } from '../../venue';
 
 export const venues = pgTable(
@@ -205,6 +206,15 @@ export const ratings = pgTable(
 		index('idx_ratings_venue').on(table.venueId)
 	]
 );
+
+/** One row, id `current`. Superusers edit the public status tag from the admin panel. */
+export const siteStatus = pgTable('site_status', {
+	id: text('id').primaryKey(),
+	active: boolean('active').notNull().default(false),
+	text: text('text').notNull(),
+	severity: text('severity').$type<SiteSeverity>().notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
 
 export const sessions = pgTable(
 	'sessions',

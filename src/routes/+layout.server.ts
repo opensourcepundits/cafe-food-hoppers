@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { LayoutServerLoad } from './$types';
 import { canCreateVenue, canManagePlaces, canReportClosure, isOwner, isSuperuser } from '$lib/server/access';
+import { getSiteStatus } from '$lib/server/site-status';
 import { resolveVapid } from '$lib/server/runtime-env';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
@@ -12,6 +13,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		canCreate: canCreateVenue(locals.user),
 		canManage: canManagePlaces(locals.user),
 		canReportClosure: canReportClosure(locals.user),
+		siteStatus: await getSiteStatus(),
 		vapidPublicKey: resolveVapid(env).publicKey ?? ''
 	};
 };

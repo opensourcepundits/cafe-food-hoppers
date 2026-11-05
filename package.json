@@ -14,7 +14,7 @@
 		"db:seed": "tsx --env-file=.env src/lib/server/db/seed.ts"
 	},
 	"engines": {
-		"node": ">=20"
+		"node": "22.x"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-vercel": "^6.3.4",

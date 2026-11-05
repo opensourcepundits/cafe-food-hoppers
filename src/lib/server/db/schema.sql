@@ -154,3 +154,12 @@ CREATE TRIGGER users_updated_at
 BEFORE UPDATE ON users
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
+
+-- One public status tag. Superusers change the message and its severity color.
+CREATE TABLE site_status (
+    id TEXT PRIMARY KEY,
+    active BOOLEAN NOT NULL DEFAULT FALSE,
+    text TEXT NOT NULL,
+    severity TEXT NOT NULL CHECK (severity IN ('notice', 'caution', 'warning', 'critical')),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
